@@ -119,15 +119,14 @@ async def serve(request: Request, path: str):
     clean_path = path.strip("/")
     
     if clean_path == "upload":
-        return templates.TemplateResponse("index.html", {"request": request, "page": "upload"})
+        return templates.TemplateResponse(request, "index.html", {"page": "upload"})
     if clean_path == "ytmusic":
-        return templates.TemplateResponse("index.html", {"request": request, "page": "ytmusic"})
+        return templates.TemplateResponse(request, "index.html", {"page": "ytmusic"})
     
     # Phase 1/2: UI Rendering (File vs Directory logic)
     if clean_path and await is_file(clean_path):
         filename = clean_path.split("/")[-1]
-        return templates.TemplateResponse("index.html", {
-            "request": request, 
+        return templates.TemplateResponse(request, "index.html", {
             "page": "file", 
             "path": clean_path,
             "filename": filename
@@ -137,8 +136,7 @@ async def serve(request: Request, path: str):
     if clean_path and not items:
         raise HTTPException(status_code=404, detail="Not Found")
 
-    return templates.TemplateResponse("index.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "index.html", {
         "page": "listing",
         "path": clean_path,
         "items": items
