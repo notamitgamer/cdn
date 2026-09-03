@@ -1,6 +1,7 @@
 import os
 import shutil
 import uuid
+import mimetypes
 import httpx
 from fastapi import FastAPI, Request, File, UploadFile, Depends, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse
@@ -34,10 +35,18 @@ async def stream_raw(path: str):
         await client.aclose()
         raise HTTPException(status_code=404, detail="File not found")
     
+    # Don't trust Hugging Face's own Content-Type: files pushed via
+    # huggingface_hub can end up LFS-tracked and served back as
+    # application/octet-stream regardless of their real type, which
+    # makes browsers force-download instead of displaying them inline
+    # (the whole point of /raw/). Guess from the filename instead.
+    guessed_type, _ = mimetypes.guess_type(path)
+    content_type = guessed_type or "application/octet-stream"
+
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=31536000",
-        "Content-Type": r.headers.get("Content-Type", "application/octet-stream")
+        "Content-Type": content_type
     }
     
     async def stream_generator():

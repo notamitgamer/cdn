@@ -118,6 +118,11 @@
 
         <!-- Directory Listing View -->
         {% if page == 'listing' %}
+        {% if not path %}
+        <div style="margin-bottom: 1.5rem;">
+            <a href="/upload" class="btn">Upload Files</a>
+        </div>
+        {% endif %}
         <table>
             <thead>
                 <tr><th>Name</th><th>Size</th><th>Action</th></tr>
