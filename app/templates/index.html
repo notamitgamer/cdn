@@ -16,6 +16,7 @@
         }
         
         * { box-sizing: border-box; }
+        * { -webkit-tap-highlight-color: transparent; }
         
         body {
             font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
@@ -194,14 +195,14 @@
     <div class="container">
         {% if page == 'listing' and not path %}
         <div class="top-accent"></div>
-        <h1>HEY, THIS IS MY CDN.</h1>
+        <h1>HEY, THIS IS <a href="https://amit.is-a.dev">MY</a> CDN.</h1>
         <p class="intro">Assets for my other sites. Meant for me, but you're welcome to look around.</p>
         <blockquote>
             Please don't hotlink. I can change these URLs at any point without warning, so anything pointing here may break.
         </blockquote>
-        <div class="upload-notice">
+        <blockquote>
             If you want to upload anything, go to <a href="/upload">here</a> and upload and you will get a link.
-        </div>
+        </blockquote>
         {% endif %}
 
         {% if page != 'listing' or path %}
@@ -302,9 +303,9 @@
         </div>
 
         {% elif page == 'upload' %}
-        <p class="intro" style="margin-bottom: 2rem;">
-            If you do not remember the link, go to the <a href="/uploads">upload folder</a> (https://cdn.amit.is-a.dev/uploads) to find your file.
-        </p>
+        <blockquote>
+            If you do not remember the link, go to the <a href="/uploads">uploads folder</a>to find your file.
+        </blockquote>
 
         <!-- Hidden token field containing the hardcoded password -->
         <input type="hidden" id="token" value="Amitthehack2006">
@@ -414,9 +415,6 @@
                     cdn
                 {% endif %}
                 · &copy; 2026 · assets may move without notice
-            </div>
-            <div>
-                <a href="/upload">upload</a>
             </div>
         </footer>
     </div>
