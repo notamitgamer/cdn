@@ -97,8 +97,8 @@
             <p style="color: #64748b; margin-bottom: 2rem;">{{ path }}</p>
             <div style="display: flex; gap: 1rem; justify-content: center;">
                 <a href="/api/download/{{ path }}" class="btn">Download File</a>
-                <button onclick="copyToClipboard('https://cdn.amit.is-a.dev/{{ path }}')" class="btn btn-secondary">Copy Link</button>
-                <button onclick="copyToClipboard('https://raw.cdn.amit.is-a.dev/{{ path }}')" class="btn btn-secondary">Copy Raw Link</button>
+                <button onclick="copyToClipboard(window.location.origin + '/{{ path }}')" class="btn btn-secondary">Copy Link</button>
+                <button onclick="copyToClipboard(window.location.origin + '/raw/{{ path }}')" class="btn btn-secondary">Copy Raw Link</button>
             </div>
         </div>
 
