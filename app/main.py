@@ -4,7 +4,7 @@ import uuid
 import mimetypes
 import httpx
 from fastapi import FastAPI, Request, File, UploadFile, Depends, HTTPException
-from fastapi.responses import StreamingResponse, HTMLResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 
 from .storage import is_file, list_directory, upload_temp_file, HF_REPO_ID
@@ -108,9 +108,9 @@ async def handle_upload(files: list[UploadFile] = File(...), _ = Depends(verify_
 
     return {"files": results}
 
-@app.get("/ping")
+@app.get("/ping", response_class=PlainTextResponse)
 async def ping():
-    return {"status": "alive"}
+    return "Server is awake!"
 
 @app.get("/{path:path}")
 async def serve(request: Request, path: str):
