@@ -105,16 +105,16 @@ async def handle_upload(files: list[UploadFile] = File(...), _ = Depends(verify_
         results.append({
             "filename": file.filename,
             "cdn_url": f"{CDN_BASE_URL}/{hf_path}",
-            "raw_url": f"{RAW_BASE_URL}/{hf_path}"  # Updated to use new raw subdomain
+            "raw_url": f"{RAW_BASE_URL}/{hf_path}"
         })
 
     return {"files": results}
 
-@app.get("/ping", response_class=PlainTextResponse)
+@app.api_route("/ping", methods=["GET", "HEAD"], response_class=PlainTextResponse)
 async def ping():
     return "Server is awake!"
 
-@app.get("/{path:path}")
+@app.api_route("/{path:path}", methods=["GET", "HEAD"])
 async def serve(request: Request, path: str):
     clean_path = path.strip("/")
 
