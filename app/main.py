@@ -1,23 +1,16 @@
 import os
 import shutil
 import uuid
+import mimetypes
 import httpx
-from fastapi import FastAPI, Request, Form, File, UploadFile, Depends, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Request, File, UploadFile, Depends, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 
 from .storage import is_file, list_directory, upload_temp_file, HF_REPO_ID
-from .ytmusic import process_and_stream_ytmusic
 from .auth import verify_token
 
-# Phase 6: Rate Limiting setup
-limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -42,10 +35,18 @@ async def stream_raw(path: str):
         await client.aclose()
         raise HTTPException(status_code=404, detail="File not found")
     
+    # Don't trust Hugging Face's own Content-Type: files pushed via
+    # huggingface_hub can end up LFS-tracked and served back as
+    # application/octet-stream regardless of their real type, which
+    # makes browsers force-download instead of displaying them inline
+    # (the whole point of /raw/). Guess from the filename instead.
+    guessed_type, _ = mimetypes.guess_type(path)
+    content_type = guessed_type or "application/octet-stream"
+
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=31536000",
-        "Content-Type": r.headers.get("Content-Type", "application/octet-stream")
+        "Content-Type": content_type
     }
     
     async def stream_generator():
@@ -107,15 +108,6 @@ async def handle_upload(files: list[UploadFile] = File(...), _ = Depends(verify_
 
     return {"files": results}
 
-# Phase 5: Public, rate-limited YouTube Music downloader
-@app.post("/api/ytmusic")
-@limiter.limit("10/hour")
-async def ytmusic_endpoint(request: Request, url: str = Form(...), background_tasks: BackgroundTasks = BackgroundTasks()):
-    try:
-        return process_and_stream_ytmusic(url, background_tasks)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.get("/{path:path}")
 async def serve(request: Request, path: str):
     clean_path = path.strip("/")
@@ -129,8 +121,6 @@ async def serve(request: Request, path: str):
 
     if clean_path == "upload":
         return templates.TemplateResponse(request, "index.html", {"page": "upload"})
-    if clean_path == "ytmusic":
-        return templates.TemplateResponse(request, "index.html", {"page": "ytmusic"})
     
     # Phase 1/2: UI Rendering (File vs Directory logic)
     if clean_path and await is_file(clean_path):
