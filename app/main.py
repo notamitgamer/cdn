@@ -14,18 +14,10 @@ app = FastAPI()
 
 templates = Jinja2Templates(directory="app/templates")
 
-# Base URL for building shareable links. Set CDN_BASE_URL on Render once
-# the custom domain (cdn.amit.is-a.dev) is attached; falls back to the
-# temporary onrender.com URL so this still works before that's set up.
 CDN_BASE_URL = os.getenv("CDN_BASE_URL", "https://cdn-zt7p.onrender.com")
-
-# Phase 7: Path-based raw routing (Render free tier only allows one
-# custom domain, so raw serving lives at /raw/<path> instead of a
-# raw. subdomain)
 RAW_PREFIX = "raw/"
 
 async def stream_raw(path: str):
-    """Streams file bytes for /raw/<path> requests."""
     hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
     client = httpx.AsyncClient(follow_redirects=True)
     req = client.build_request("GET", hf_url)
@@ -35,18 +27,18 @@ async def stream_raw(path: str):
         await client.aclose()
         raise HTTPException(status_code=404, detail="File not found")
     
-    # Don't trust Hugging Face's own Content-Type: files pushed via
-    # huggingface_hub can end up LFS-tracked and served back as
-    # application/octet-stream regardless of their real type, which
-    # makes browsers force-download instead of displaying them inline
-    # (the whole point of /raw/). Guess from the filename instead.
     guessed_type, _ = mimetypes.guess_type(path)
-    content_type = guessed_type or "application/octet-stream"
+    
+    if not guessed_type or guessed_type.startswith("text/"):
+        content_type = "text/plain"
+    else:
+        content_type = guessed_type
 
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=31536000",
-        "Content-Type": content_type
+        "Content-Type": content_type,
+        "Content-Disposition": "inline" 
     }
     
     async def stream_generator():
@@ -60,7 +52,6 @@ async def stream_raw(path: str):
 
 @app.get("/api/download/{path:path}")
 async def download_file(path: str):
-    """Forces a file download from the cdn. domain."""
     hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
     client = httpx.AsyncClient(follow_redirects=True)
     req = client.build_request("GET", hf_url)
@@ -85,7 +76,6 @@ async def download_file(path: str):
             
     return StreamingResponse(stream_generator(), headers=headers)
 
-# Phase 4/8: Token-protected multi-file upload endpoint
 @app.post("/api/upload")
 async def handle_upload(files: list[UploadFile] = File(...), _ = Depends(verify_token)):
     results = []
@@ -108,11 +98,14 @@ async def handle_upload(files: list[UploadFile] = File(...), _ = Depends(verify_
 
     return {"files": results}
 
+@app.get("/ping")
+async def ping():
+    return {"status": "alive"}
+
 @app.get("/{path:path}")
 async def serve(request: Request, path: str):
     clean_path = path.strip("/")
 
-    # Path-based raw serving: /raw/<path>
     if clean_path == RAW_PREFIX.rstrip("/") or clean_path.startswith(RAW_PREFIX):
         raw_path = clean_path[len(RAW_PREFIX):]
         if not raw_path:
@@ -122,7 +115,6 @@ async def serve(request: Request, path: str):
     if clean_path == "upload":
         return templates.TemplateResponse(request, "index.html", {"page": "upload"})
     
-    # Phase 1/2: UI Rendering (File vs Directory logic)
     if clean_path and await is_file(clean_path):
         filename = clean_path.split("/")[-1]
         return templates.TemplateResponse(request, "index.html", {
