@@ -10,3 +10,7 @@ services:
         sync: false
       - key: ADMIN_TOKEN
         sync: false
+      - key: RAW_DOMAIN
+        value: raw.cdn.amit.is-a.dev
+      - key: RAW_BASE_URL
+        value: https://raw.cdn.amit.is-a.dev
