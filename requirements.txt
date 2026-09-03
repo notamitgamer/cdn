@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+huggingface_hub
+yt-dlp
+httpx
+slowapi
+python-multipart
+jinja2

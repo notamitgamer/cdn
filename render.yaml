@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: cdn-app
+    env: docker
+    plan: free
+    envVars:
+      - key: HF_REPO_ID
+        value: notamitgamer/cdn
+      - key: HF_TOKEN
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false

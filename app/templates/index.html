@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDN | {{ page | capitalize }}</title>
+    <!-- Phase 3: Minimal, bare-but-fresh frontend (CSS included inline to enforce single-file HTML mandate) -->
+    <style>
+        :root { --accent: #2563eb; --bg: #f8fafc; --text: #0f172a; --border: #e2e8f0; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 2rem; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .nav { margin-bottom: 2rem; font-size: 1.1rem; }
+        .btn { display: inline-block; background: var(--accent); color: white; padding: 0.5rem 1rem; border-radius: 4px; border: none; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
+        .btn:hover { background: #1d4ed8; text-decoration: none; }
+        .btn-secondary { background: #f1f5f9; color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #e2e8f0; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); }
+        th { font-weight: 500; color: #64748b; }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-group input { width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; }
+        
+        #result { margin-top: 1rem; padding: 1rem; background: #f1f5f9; border-radius: 4px; display: none; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Breadcrumb Navigation -->
+        <nav class="nav">
+            <a href="/">~ Root</a> 
+            {% if page in ['listing', 'file'] and path %}
+                {% set parts = path.split('/') %}
+                {% set current = namespace(val='') %}
+                {% for part in parts %}
+                    {% set current.val = current.val + part + '/' %}
+                    / <a href="/{{ current.val[:-1] }}">{{ part }}</a>
+                {% endfor %}
+            {% elif page == 'upload' %}
+                / <a href="/upload">upload</a>
+            {% elif page == 'ytmusic' %}
+                / <a href="/ytmusic">ytmusic</a>
+            {% endif %}
+        </nav>
+
+        <!-- Directory Listing View -->
+        {% if page == 'listing' %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Size</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if path %}
+                <tr>
+                    <td><a href="../">📁 ..</a></td>
+                    <td>-</td>
+                    <td></td>
+                </tr>
+                {% endif %}
+                {% for item in items %}
+                <tr>
+                    <td>
+                        {% if item.is_dir %}
+                        📁 <a href="/{{ item.path }}">{{ item.name }}</a>
+                        {% else %}
+                        📄 <a href="/{{ item.path }}">{{ item.name }}</a>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.size_str }}</td>
+                    <td>
+                        {% if item.is_dir %}
+                        <a href="/{{ item.path }}" class="btn btn-secondary">Open</a>
+                        {% else %}
+                        <a href="/api/download/{{ item.path }}" class="btn">Download</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not items %}
+                <tr><td colspan="3" style="text-align: center; padding: 2rem;">Empty directory</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        <!-- Single File View -->
+        {% elif page == 'file' %}
+        <div style="text-align: center; padding: 3rem 0;">
+            <h2>📄 {{ filename }}</h2>
+            <p style="color: #64748b; margin-bottom: 2rem;">{{ path }}</p>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <a href="/api/download/{{ path }}" class="btn">Download File</a>
+                <button onclick="copyToClipboard('https://cdn.amit.is-a.dev/{{ path }}')" class="btn btn-secondary">Copy Link</button>
+                <button onclick="copyToClipboard('https://raw.cdn.amit.is-a.dev/{{ path }}')" class="btn btn-secondary">Copy Raw Link</button>
+            </div>
+        </div>
+
+        <!-- Token-Protected Upload View -->
+        {% elif page == 'upload' %}
+        <h2>Upload File</h2>
+        <form id="uploadForm">
+            <div class="form-group">
+                <label>Admin Token</label>
+                <input type="password" id="token" required>
+            </div>
+            <div class="form-group">
+                <label>File</label>
+                <input type="file" id="file" required>
+            </div>
+            <button type="submit" class="btn">Upload to CDN</button>
+        </form>
+        <div id="result"></div>
+        <script>
+            document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = e.target.querySelector('button');
+                btn.textContent = 'Uploading...';
+                btn.disabled = true;
+                
+                const formData = new FormData();
+                formData.append('file', document.getElementById('file').files[0]);
+                
+                try {
+                    const res = await fetch('/api/upload', {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + document.getElementById('token').value },
+                        body: formData
+                    });
+                    
+                    if (!res.ok) throw new Error('Upload failed: ' + res.statusText);
+                    const data = await res.json();
+                    
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <strong>Success!</strong><br><br>
+                        CDN Link: <a href="${data.cdn_url}" target="_blank">${data.cdn_url}</a><br>
+                        Raw Link: <a href="${data.raw_url}" target="_blank">${data.raw_url}</a>
+                    `;
+                } catch (err) {
+                    alert(err.message);
+                } finally {
+                    btn.textContent = 'Upload to CDN';
+                    btn.disabled = false;
+                }
+            });
+        </script>
+
+        <!-- YT Music Converter View -->
+        {% elif page == 'ytmusic' %}
+        <h2>YouTube Music Downloader</h2>
+        <p>Paste a YouTube Music link to download it directly as an MP3.</p>
+        <form method="POST" action="/api/ytmusic">
+            <div class="form-group">
+                <label>YouTube URL</label>
+                <input type="url" name="url" placeholder="https://music.youtube.com/watch?v=..." required>
+            </div>
+            <button type="submit" class="btn" onclick="this.textContent='Processing... Please wait';">Download MP3</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+    </script>
+</body>
+</html>
