@@ -32,6 +32,13 @@
             font-size: 1rem;
         }
 
+        @media (max-width: 480px) {
+            body {
+                padding: 1.5rem 1rem;
+                font-size: 0.9rem;
+            }
+        }
+
         .container {
             max-width: 760px;
             margin: 0 auto;
@@ -109,6 +116,7 @@
             padding: 0.75rem 1rem;
             border-bottom: 1px solid var(--border);
             color: var(--text-main);
+            gap: 0.5rem;
         }
         .list-item:hover {
             background: var(--surface);
@@ -120,10 +128,17 @@
             align-items: center;
             gap: 0.75rem;
             word-break: break-all;
+            min-width: 0;
+            flex: 1;
         }
         .item-name svg {
             color: var(--text-dim);
             flex-shrink: 0;
+        }
+        .item-name a {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         
         .item-meta {
@@ -133,6 +148,13 @@
             color: var(--text-dim);
             font-size: 0.8rem;
             white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 480px) {
+            .item-meta .size-label {
+                display: none;
+            }
         }
 
         .download-icon {
@@ -140,6 +162,7 @@
             transition: color 0.15s;
             display: flex;
             align-items: center;
+            padding: 0.25rem; /* larger tap target on mobile */
         }
         .download-icon:hover {
             color: var(--accent-pink);
@@ -157,6 +180,13 @@
             font-size: 0.85rem;
         }
         .btn:hover { background: #21262d; text-decoration: none; border-color: #30363d; }
+
+        @media (max-width: 480px) {
+            .btn {
+                padding: 0.6rem 1rem;
+                font-size: 0.8rem;
+            }
+        }
 
         #dropzone {
             border: 1px dashed var(--border);
@@ -195,6 +225,8 @@
             font-size: 0.8rem;
             display: flex;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
         footer a { color: var(--text-dim); }
         footer a:hover { color: var(--text-main); }
@@ -263,7 +295,7 @@
                     </div>
                     <div class="item-meta">
                         {% if not item.is_dir %}
-                        <span>{{ item.size_str }}</span>
+                        <span class="size-label">{{ item.size_str }}</span>
                         <!-- ADD data-turbo="false" to download links -->
                         <a href="/api/download/{{ item.path }}" class="download-icon" title="Download" data-turbo="false">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
@@ -303,7 +335,7 @@
             <h2 style="margin: 0 0 0.5rem 0; font-weight: normal; color: var(--accent-pink);">{{ filename }}</h2>
             <p style="color: var(--text-dim); margin-bottom: 2rem; font-size: 0.85rem; word-break: break-all;">{{ path }}</p>
             
-            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; padding: 0 0.5rem;">
                 <!-- ADD data-turbo="false" to these action buttons -->
                 <a href="/api/download/{{ path }}" class="btn" data-turbo="false">Download</a>
                 <a href="{{ raw_base_url }}/{{ path }}" class="btn" data-turbo="false">Open Raw</a>
