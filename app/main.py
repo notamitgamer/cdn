@@ -55,7 +55,7 @@ async def stream_raw(path: str):
     
     async def stream_generator():
         try:
-            async for chunk in r.aiter_raw():
+            async for chunk in r.aiter_bytes():
                 yield chunk
         finally:
             await client.aclose()
@@ -81,7 +81,7 @@ async def download_file(path: str):
     
     async def stream_generator():
         try:
-            async for chunk in r.aiter_raw():
+            async for chunk in r.aiter_bytes():
                 yield chunk
         finally:
             await client.aclose()
