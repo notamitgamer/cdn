@@ -20,17 +20,20 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 templates = Jinja2Templates(directory="app/templates")
 
-# Phase 2: Dual-domain routing middleware
-@app.middleware("http")
-async def route_by_host(request: Request, call_next):
-    host = request.headers.get("host", "")
-    request.state.is_raw = host.startswith("raw.")
-    return await call_next(request)
+# Base URL for building shareable links. Set CDN_BASE_URL on Render once
+# the custom domain (cdn.amit.is-a.dev) is attached; falls back to the
+# temporary onrender.com URL so this still works before that's set up.
+CDN_BASE_URL = os.getenv("CDN_BASE_URL", "https://cdn-zt7p.onrender.com")
+
+# Phase 7: Path-based raw routing (Render free tier only allows one
+# custom domain, so raw serving lives at /raw/<path> instead of a
+# raw. subdomain)
+RAW_PREFIX = "raw/"
 
 async def stream_raw(path: str):
-    """Streams file from Hugging Face for the raw. domain."""
+    """Streams file bytes for /raw/<path> requests."""
     hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
-    client = httpx.AsyncClient()
+    client = httpx.AsyncClient(follow_redirects=True)
     req = client.build_request("GET", hf_url)
     r = await client.send(req, stream=True)
     
@@ -57,7 +60,7 @@ async def stream_raw(path: str):
 async def download_file(path: str):
     """Forces a file download from the cdn. domain."""
     hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
-    client = httpx.AsyncClient()
+    client = httpx.AsyncClient(follow_redirects=True)
     req = client.build_request("GET", hf_url)
     r = await client.send(req, stream=True)
     
@@ -94,8 +97,8 @@ async def handle_upload(file: UploadFile = File(...), _ = Depends(verify_token))
             os.remove(temp_path)
     
     return {
-        "cdn_url": f"https://cdn.amit.is-a.dev/{hf_path}",
-        "raw_url": f"https://raw.cdn.amit.is-a.dev/{hf_path}"
+        "cdn_url": f"{CDN_BASE_URL}/{hf_path}",
+        "raw_url": f"{CDN_BASE_URL}/{RAW_PREFIX}{hf_path}"
     }
 
 # Phase 5: Public, rate-limited YouTube Music downloader
@@ -109,15 +112,15 @@ async def ytmusic_endpoint(request: Request, url: str = Form(...), background_ta
 
 @app.get("/{path:path}")
 async def serve(request: Request, path: str):
-    # Route raw traffic
-    if request.state.is_raw:
-        if not path:
-            return HTMLResponse("raw. domain root. Please specify a file path.", status_code=200)
-        return await stream_raw(path)
-    
-    # Route CDN traffic
     clean_path = path.strip("/")
-    
+
+    # Path-based raw serving: /raw/<path>
+    if clean_path == RAW_PREFIX.rstrip("/") or clean_path.startswith(RAW_PREFIX):
+        raw_path = clean_path[len(RAW_PREFIX):]
+        if not raw_path:
+            return HTMLResponse("/raw/ — specify a file path after this prefix.", status_code=200)
+        return await stream_raw(raw_path)
+
     if clean_path == "upload":
         return templates.TemplateResponse(request, "index.html", {"page": "upload"})
     if clean_path == "ytmusic":

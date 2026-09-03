@@ -28,6 +28,18 @@ def process_and_stream_ytmusic(url: str, background_tasks: BackgroundTasks):
             'noplaylist': True,
             'match_filter': filter_duration_and_live,
         }
+
+        # Optional: YT_COOKIES env var holding the full contents of a
+        # Netscape-format cookies.txt exported from a logged-in browser
+        # session. YouTube sometimes blocks Render's server IPs with a
+        # "Sign in to confirm you're not a bot" error; passing cookies
+        # from a real browser session works around that.
+        cookies_content = os.getenv("YT_COOKIES")
+        if cookies_content:
+            cookies_path = os.path.join(temp_dir, "cookies.txt")
+            with open(cookies_path, "w") as f:
+                f.write(cookies_content)
+            ydl_opts['cookiefile'] = cookies_path
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
