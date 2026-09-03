@@ -4,35 +4,106 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CDN | {{ page | capitalize }}</title>
-    <!-- Phase 3: Minimal, bare-but-fresh frontend (CSS included inline to enforce single-file HTML mandate) -->
     <style>
-        :root { --accent: #2563eb; --bg: #f8fafc; --text: #0f172a; --border: #e2e8f0; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 2rem; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        :root {
+            --accent: #60a5fa;
+            --accent-dark: #3b82f6;
+            --bg: #0b0f14;
+            --surface: #12171f;
+            --surface-2: #1a212b;
+            --text: #e6edf3;
+            --text-dim: #8b96a5;
+            --border: #232b36;
+            --danger-bg: #3a1518;
+            --danger-text: #ffb4ab;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 2.5rem 1.5rem;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
         a { color: var(--accent); text-decoration: none; }
         a:hover { text-decoration: underline; }
-        .nav { margin-bottom: 2rem; font-size: 1.1rem; }
-        .btn { display: inline-block; background: var(--accent); color: white; padding: 0.5rem 1rem; border-radius: 4px; border: none; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
-        .btn:hover { background: #1d4ed8; text-decoration: none; }
-        .btn-secondary { background: #f1f5f9; color: var(--text); border: 1px solid var(--border); }
-        .btn-secondary:hover { background: #e2e8f0; }
-        
+        .nav { margin-bottom: 2rem; font-size: 0.95rem; color: var(--text-dim); }
+        .nav a { color: var(--text-dim); }
+        .nav a:hover { color: var(--accent); }
+
+        .btn {
+            display: inline-block;
+            background: var(--accent-dark);
+            color: #fff;
+            padding: 0.55rem 1.1rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .btn:hover { background: var(--accent); text-decoration: none; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: #232b36; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); }
-        th { font-weight: 500; color: #64748b; }
-        
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        .form-group input { width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; }
-        
-        #result { margin-top: 1rem; padding: 1rem; background: #f1f5f9; border-radius: 4px; display: none; word-break: break-all; }
+        th { font-weight: 500; color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; }
+        tr:last-child td { border-bottom: none; }
+
+        .form-group { margin-bottom: 1.2rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; color: var(--text-dim); }
+        .form-group input {
+            width: 100%; padding: 0.6rem 0.75rem; border: 1px solid var(--border);
+            border-radius: 6px; background: var(--surface-2); color: var(--text); font-size: 0.95rem;
+        }
+        .form-group input:focus { outline: none; border-color: var(--accent); }
+
+        #dropzone {
+            border: 2px dashed var(--border);
+            border-radius: 10px;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            background: var(--surface-2);
+            transition: border-color 0.15s, background 0.15s;
+            margin-bottom: 1.5rem;
+        }
+        #dropzone.dragover { border-color: var(--accent); background: #16202e; }
+        #dropzone .hint { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.4rem; }
+
+        .file-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.7rem 0.9rem; background: var(--surface-2); border-radius: 8px;
+            margin-bottom: 0.6rem; gap: 1rem;
+        }
+        .file-row .name { font-size: 0.9rem; word-break: break-all; }
+        .file-row .status { font-size: 0.8rem; color: var(--text-dim); white-space: nowrap; }
+        .file-row.done .status { color: #4ade80; }
+        .file-row.error .status { color: var(--danger-text); }
+        .file-row .links { font-size: 0.8rem; margin-top: 0.2rem; }
+        .file-row .links a { margin-right: 0.8rem; }
+
+        #error-box {
+            display: none; background: var(--danger-bg); color: var(--danger-text);
+            padding: 0.9rem 1rem; border-radius: 8px; margin-bottom: 1.2rem; font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Breadcrumb Navigation -->
         <nav class="nav">
-            <a href="/">~ Root</a> 
+            <a href="/">~ Root</a>
             {% if page in ['listing', 'file'] and path %}
                 {% set parts = path.split('/') %}
                 {% set current = namespace(val='') %}
@@ -51,16 +122,12 @@
         {% if page == 'listing' %}
         <table>
             <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Size</th>
-                    <th>Action</th>
-                </tr>
+                <tr><th>Name</th><th>Size</th><th>Action</th></tr>
             </thead>
             <tbody>
                 {% if path %}
                 <tr>
-                    <td><a href="../">📁 ..</a></td>
+                    <td><a href="../">.. (parent)</a></td>
                     <td>-</td>
                     <td></td>
                 </tr>
@@ -69,9 +136,9 @@
                 <tr>
                     <td>
                         {% if item.is_dir %}
-                        📁 <a href="/{{ item.path }}">{{ item.name }}</a>
+                        <a href="/{{ item.path }}">{{ item.name }}/</a>
                         {% else %}
-                        📄 <a href="/{{ item.path }}">{{ item.name }}</a>
+                        <a href="/raw/{{ item.path }}">{{ item.name }}</a>
                         {% endif %}
                     </td>
                     <td>{{ item.size_str }}</td>
@@ -85,7 +152,7 @@
                 </tr>
                 {% endfor %}
                 {% if not items %}
-                <tr><td colspan="3" style="text-align: center; padding: 2rem;">Empty directory</td></tr>
+                <tr><td colspan="3" style="text-align: center; padding: 2rem; color: var(--text-dim);">Empty directory</td></tr>
                 {% endif %}
             </tbody>
         </table>
@@ -93,76 +160,135 @@
         <!-- Single File View -->
         {% elif page == 'file' %}
         <div style="text-align: center; padding: 3rem 0;">
-            <h2>📄 {{ filename }}</h2>
-            <p style="color: #64748b; margin-bottom: 2rem;">{{ path }}</p>
-            <div style="display: flex; gap: 1rem; justify-content: center;">
+            <h2>{{ filename }}</h2>
+            <p style="color: var(--text-dim); margin-bottom: 2rem;">{{ path }}</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
                 <a href="/api/download/{{ path }}" class="btn">Download File</a>
-                <button onclick="copyToClipboard(window.location.origin + '/{{ path }}')" class="btn btn-secondary">Copy Link</button>
-                <button onclick="copyToClipboard(window.location.origin + '/raw/{{ path }}')" class="btn btn-secondary">Copy Raw Link</button>
+                <a href="/raw/{{ path }}" class="btn btn-secondary">Open Raw</a>
+                <button onclick="copyToClipboard(window.location.origin + '/' + '{{ path }}')" class="btn btn-secondary">Copy Link</button>
+                <button onclick="copyToClipboard(window.location.origin + '/raw/' + '{{ path }}')" class="btn btn-secondary">Copy Raw Link</button>
             </div>
         </div>
 
-        <!-- Token-Protected Upload View -->
+        <!-- Token-Protected Multi-File Upload View -->
         {% elif page == 'upload' %}
-        <h2>Upload File</h2>
-        <form id="uploadForm">
-            <div class="form-group">
-                <label>Admin Token</label>
-                <input type="password" id="token" required>
-            </div>
-            <div class="form-group">
-                <label>File</label>
-                <input type="file" id="file" required>
-            </div>
-            <button type="submit" class="btn">Upload to CDN</button>
-        </form>
-        <div id="result"></div>
+        <h2>Upload Files</h2>
+        <div class="form-group">
+            <label>Admin Token</label>
+            <input type="password" id="token" placeholder="Bearer token" required>
+        </div>
+
+        <div id="dropzone">
+            <div>Click, or drag &amp; drop files here</div>
+            <div class="hint">Multiple files supported &middot; any type</div>
+            <input type="file" id="file-input" multiple style="display:none;">
+        </div>
+
+        <div id="error-box"></div>
+        <div id="results"></div>
+
         <script>
-            document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('file-input');
+            const tokenInput = document.getElementById('token');
+            const results = document.getElementById('results');
+            const errorBox = document.getElementById('error-box');
+
+            dropzone.addEventListener('click', () => fileInput.click());
+            dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+            dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+            dropzone.addEventListener('drop', (e) => {
                 e.preventDefault();
-                const btn = e.target.querySelector('button');
-                btn.textContent = 'Uploading...';
-                btn.disabled = true;
-                
-                const formData = new FormData();
-                formData.append('file', document.getElementById('file').files[0]);
-                
-                try {
-                    const res = await fetch('/api/upload', {
-                        method: 'POST',
-                        headers: { 'Authorization': 'Bearer ' + document.getElementById('token').value },
-                        body: formData
-                    });
-                    
-                    if (!res.ok) throw new Error('Upload failed: ' + res.statusText);
-                    const data = await res.json();
-                    
-                    const resultDiv = document.getElementById('result');
-                    resultDiv.style.display = 'block';
-                    resultDiv.innerHTML = `
-                        <strong>Success!</strong><br><br>
-                        CDN Link: <a href="${data.cdn_url}" target="_blank">${data.cdn_url}</a><br>
-                        Raw Link: <a href="${data.raw_url}" target="_blank">${data.raw_url}</a>
-                    `;
-                } catch (err) {
-                    alert(err.message);
-                } finally {
-                    btn.textContent = 'Upload to CDN';
-                    btn.disabled = false;
-                }
+                dropzone.classList.remove('dragover');
+                if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
             });
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length) handleFiles(fileInput.files);
+            });
+
+            function showError(msg) {
+                errorBox.textContent = msg;
+                errorBox.style.display = 'block';
+            }
+
+            function handleFiles(fileList) {
+                errorBox.style.display = 'none';
+                const token = tokenInput.value.trim();
+                if (!token) { showError('Enter your admin token first.'); return; }
+
+                const files = Array.from(fileList);
+                const rows = {};
+                files.forEach(f => {
+                    const row = document.createElement('div');
+                    row.className = 'file-row';
+                    row.innerHTML = `<div><div class="name">${f.name}</div><div class="links"></div></div><div class="status">Uploading...</div>`;
+                    results.prepend(row);
+                    rows[f.name] = row;
+                });
+
+                const formData = new FormData();
+                files.forEach(f => formData.append('files', f));
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/upload', true);
+                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+
+                xhr.upload.onprogress = (e) => {
+                    if (!e.lengthComputable) return;
+                    const pct = Math.round((e.loaded / e.total) * 100);
+                    files.forEach(f => { rows[f.name].querySelector('.status').textContent = pct + '%'; });
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            data.files.forEach(item => {
+                                const row = rows[item.filename];
+                                if (!row) return;
+                                row.classList.add('done');
+                                row.querySelector('.status').textContent = 'Done';
+                                row.querySelector('.links').innerHTML =
+                                    `<a href="${item.raw_url}" target="_blank">Raw link</a>` +
+                                    `<a href="${item.cdn_url}" target="_blank">View</a>`;
+                            });
+                        } catch (err) {
+                            showError('Invalid response from server.');
+                        }
+                    } else {
+                        let msg = 'Upload failed.';
+                        try { msg = JSON.parse(xhr.responseText).detail || msg; } catch (e) {}
+                        showError(msg);
+                        files.forEach(f => {
+                            rows[f.name].classList.add('error');
+                            rows[f.name].querySelector('.status').textContent = 'Failed';
+                        });
+                    }
+                    fileInput.value = '';
+                };
+
+                xhr.onerror = () => {
+                    showError('Could not connect to server.');
+                    files.forEach(f => {
+                        rows[f.name].classList.add('error');
+                        rows[f.name].querySelector('.status').textContent = 'Failed';
+                    });
+                };
+
+                xhr.send(formData);
+            }
         </script>
 
         <!-- YT Music Converter View -->
         {% elif page == 'ytmusic' %}
         <h2>YouTube Music Downloader</h2>
-        <p>Paste a YouTube Music link to download it directly as an MP3.</p>
+        <p style="color: var(--text-dim);">Paste a YouTube Music link. It downloads straight to your device as an MP3 — nothing is stored on the CDN.</p>
         <form method="POST" action="/api/ytmusic">
             <div class="form-group">
                 <label>YouTube URL</label>
                 <input type="url" name="url" placeholder="https://music.youtube.com/watch?v=..." required>
             </div>
-            <button type="submit" class="btn" onclick="this.textContent='Processing... Please wait';">Download MP3</button>
+            <button type="submit" class="btn">Download MP3</button>
         </form>
         {% endif %}
     </div>

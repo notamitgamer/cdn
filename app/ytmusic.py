@@ -20,13 +20,20 @@ def process_and_stream_ytmusic(url: str, background_tasks: BackgroundTasks):
     
     try:
         ydl_opts = {
-            'format': 'bestaudio',
+            'format': 'bestaudio/best',
             'extract_audio': True,
             'audio_format': 'mp3',
             'audio_quality': '0',
             'outtmpl': os.path.join(temp_dir, '%(artist)s - %(title)s.%(ext)s'),
             'noplaylist': True,
             'match_filter': filter_duration_and_live,
+            # The default web player client requires solving YouTube's
+            # signature/n-challenge, which needs an external JS runtime
+            # yt-dlp doesn't ship. The android/ios clients receive
+            # pre-resolved stream URLs and skip that challenge entirely.
+            'extractor_args': {
+                'youtube': {'player_client': ['android', 'ios']}
+            },
         }
 
         # Optional: YT_COOKIES env var holding the full contents of a

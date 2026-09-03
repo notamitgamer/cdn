@@ -1,5 +1,6 @@
 import os
 import shutil
+import uuid
 import httpx
 from fastapi import FastAPI, Request, Form, File, UploadFile, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse, HTMLResponse
@@ -83,23 +84,28 @@ async def download_file(path: str):
             
     return StreamingResponse(stream_generator(), headers=headers)
 
-# Phase 4: Token-protected Upload endpoint
+# Phase 4/8: Token-protected multi-file upload endpoint
 @app.post("/api/upload")
-async def handle_upload(file: UploadFile = File(...), _ = Depends(verify_token)):
-    temp_path = f"/tmp/{file.filename}"
-    with open(temp_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-    
-    try:
-        hf_path = upload_temp_file(temp_path, file.filename)
-    finally:
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-    
-    return {
-        "cdn_url": f"{CDN_BASE_URL}/{hf_path}",
-        "raw_url": f"{CDN_BASE_URL}/{RAW_PREFIX}{hf_path}"
-    }
+async def handle_upload(files: list[UploadFile] = File(...), _ = Depends(verify_token)):
+    results = []
+    for file in files:
+        temp_path = f"/tmp/{uuid.uuid4()}-{file.filename}"
+        with open(temp_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+
+        try:
+            hf_path = upload_temp_file(temp_path, file.filename)
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+        results.append({
+            "filename": file.filename,
+            "cdn_url": f"{CDN_BASE_URL}/{hf_path}",
+            "raw_url": f"{CDN_BASE_URL}/{RAW_PREFIX}{hf_path}"
+        })
+
+    return {"files": results}
 
 # Phase 5: Public, rate-limited YouTube Music downloader
 @app.post("/api/ytmusic")

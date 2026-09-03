@@ -10,6 +10,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# yt-dlp needs to keep up with YouTube's frequent changes — always pull
+# the latest release on build instead of relying on the requirements.txt
+# layer cache, which would otherwise pin whatever version was current
+# the last time requirements.txt itself changed.
+RUN pip install --no-cache-dir -U yt-dlp
+
 # Copy the app structure
 COPY app/ ./app/
 
