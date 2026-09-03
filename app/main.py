@@ -19,6 +19,14 @@ RAW_DOMAIN = os.getenv("RAW_DOMAIN", "raw.cdn.amit.is-a.dev")
 RAW_BASE_URL = os.getenv("RAW_BASE_URL", f"https://{RAW_DOMAIN}")
 RAW_PREFIX = "raw/"
 
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: HTTPException):
+    # Keep the raw subdomain returning plain text errors
+    if request.url.hostname == RAW_DOMAIN:
+        return PlainTextResponse("404: File Not Found", status_code=404)
+    # Render UI 404 page for the main CDN domain
+    return templates.TemplateResponse(request, "index.html", {"page": "404"}, status_code=404)
+
 async def stream_raw(path: str):
     hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
     client = httpx.AsyncClient(follow_redirects=True)

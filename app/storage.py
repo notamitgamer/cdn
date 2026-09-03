@@ -1,4 +1,5 @@
 import os
+import time
 import uuid
 import httpx
 from huggingface_hub import HfApi
@@ -9,17 +10,43 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 
 api = HfApi(token=HF_TOKEN)
 
+# --- SPEED OPTIMIZATION: IN-MEMORY CACHE ---
+_cache = {}
+CACHE_TTL = 60  # Cache folder layouts for 60 seconds to make navigation instant
+
+def _get_cache(key):
+    if key in _cache and _cache[key][0] > time.time():
+        return _cache[key][1]
+    return None
+
+def _set_cache(key, value):
+    _cache[key] = (time.time() + CACHE_TTL, value)
+# -------------------------------------------
+
 async def is_file(path: str) -> bool:
     """Check if a path in the HF dataset is a file using a quick HEAD request."""
     if not path:
         return False
+        
+    cache_key = f"is_file_{path}"
+    cached = _get_cache(cache_key)
+    if cached is not None:
+        return cached
+
     hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
     async with httpx.AsyncClient() as client:
         r = await client.head(hf_url)
-        return r.status_code == 200
+        result = r.status_code == 200
+        _set_cache(cache_key, result)
+        return result
 
 def list_directory(path: str):
     """Returns list of dicts for items in directory, sorted folders first."""
+    cache_key = f"list_dir_{path}"
+    cached = _get_cache(cache_key)
+    if cached is not None:
+        return cached
+
     try:
         items = list(api.list_repo_tree(repo_id=HF_REPO_ID, path_in_repo=path, repo_type="dataset"))
     except Exception:
@@ -48,6 +75,8 @@ def list_directory(path: str):
         })
     
     files_and_folders.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
+    
+    _set_cache(cache_key, files_and_folders)
     return files_and_folders
 
 def upload_temp_file(temp_path: str, filename: str) -> str:
@@ -63,4 +92,7 @@ def upload_temp_file(temp_path: str, filename: str) -> str:
         repo_type="dataset",
         token=HF_TOKEN
     )
+    
+    # Clear cache so the newly uploaded file is immediately visible in directories
+    _cache.clear() 
     return hf_path

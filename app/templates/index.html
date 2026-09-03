@@ -4,10 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CDN | {{ page | capitalize }}</title>
+    
+    <!-- ADD THIS: Turbo to make the site a Single Page App -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es2017-esm.js"></script>
+    
     <style>
         :root {
-            --bg: #0d1117;
-            --surface: #161b22;
+            --bg: #050505;
+            --surface: #121212;
             --text-main: #c9d1d9;
             --text-dim: #8b949e;
             --accent-pink: #ffb4ab;
@@ -25,7 +29,7 @@
             margin: 0;
             padding: 3rem 1.5rem;
             line-height: 1.6;
-            font-size: 0.9rem;
+            font-size: 1rem;
         }
 
         .container {
@@ -177,6 +181,12 @@
         .file-row.done { border-color: #2ea043; }
         .file-row.error { border-color: var(--danger); }
 
+        /* ADD THIS: Style the Turbo progress bar to match your theme */
+        .turbo-progress-bar {
+            height: 3px;
+            background-color: var(--accent-pink);
+        }
+
         footer {
             margin-top: 4rem;
             padding-top: 1rem;
@@ -247,14 +257,15 @@
                         <a href="/{{ item.path }}">{{ item.name }}/</a>
                         {% else %}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-                        <!-- Updated to link directly to the new raw subdomain -->
-                        <a href="{{ raw_base_url }}/{{ item.path }}">{{ item.name }}</a>
+                        <!-- ADD data-turbo="false" so clicking raw files doesn't trigger the SPA router -->
+                        <a href="{{ raw_base_url }}/{{ item.path }}" data-turbo="false">{{ item.name }}</a>
                         {% endif %}
                     </div>
                     <div class="item-meta">
                         {% if not item.is_dir %}
                         <span>{{ item.size_str }}</span>
-                        <a href="/api/download/{{ item.path }}" class="download-icon" title="Download">
+                        <!-- ADD data-turbo="false" to download links -->
+                        <a href="/api/download/{{ item.path }}" class="download-icon" title="Download" data-turbo="false">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
                         </a>
                         {% endif %}
@@ -293,12 +304,20 @@
             <p style="color: var(--text-dim); margin-bottom: 2rem; font-size: 0.85rem; word-break: break-all;">{{ path }}</p>
             
             <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                <a href="/api/download/{{ path }}" class="btn">Download</a>
-                <!-- Updated links to utilize raw_base_url -->
-                <a href="{{ raw_base_url }}/{{ path }}" class="btn">Open Raw</a>
+                <!-- ADD data-turbo="false" to these action buttons -->
+                <a href="/api/download/{{ path }}" class="btn" data-turbo="false">Download</a>
+                <a href="{{ raw_base_url }}/{{ path }}" class="btn" data-turbo="false">Open Raw</a>
                 <button onclick="copyToClipboard(window.location.origin + '/' + '{{ path }}')" class="btn">Copy Link</button>
                 <button onclick="copyToClipboard('{{ raw_base_url }}/{{ path }}')" class="btn">Copy Raw Link</button>
             </div>
+        </div>
+
+        {% elif page == '404' %}
+        <div class="list-container" style="padding: 4rem 1.5rem; text-align: center;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5" style="margin-bottom: 1rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <h2 style="margin: 0 0 0.5rem 0; font-weight: normal; color: var(--danger);">404 - Not Found</h2>
+            <p style="color: var(--text-dim); margin-bottom: 2rem;">The file or directory you're looking for doesn't exist.</p>
+            <a href="/" class="btn">Go to Root</a>
         </div>
 
         {% elif page == 'upload' %}
