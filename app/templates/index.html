@@ -113,8 +113,6 @@
                 {% endfor %}
             {% elif page == 'upload' %}
                 / <a href="/upload">upload</a>
-            {% elif page == 'ytmusic' %}
-                / <a href="/ytmusic">ytmusic</a>
             {% endif %}
         </nav>
 
@@ -279,17 +277,6 @@
             }
         </script>
 
-        <!-- YT Music Converter View -->
-        {% elif page == 'ytmusic' %}
-        <h2>YouTube Music Downloader</h2>
-        <p style="color: var(--text-dim);">Paste a YouTube Music link. It downloads straight to your device as an MP3 — nothing is stored on the CDN.</p>
-        <form method="POST" action="/api/ytmusic">
-            <div class="form-group">
-                <label>YouTube URL</label>
-                <input type="url" name="url" placeholder="https://music.youtube.com/watch?v=..." required>
-            </div>
-            <button type="submit" class="btn">Download MP3</button>
-        </form>
         {% endif %}
     </div>
 

@@ -2,22 +2,14 @@ import os
 import shutil
 import uuid
 import httpx
-from fastapi import FastAPI, Request, Form, File, UploadFile, Depends, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Request, File, UploadFile, Depends, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 
 from .storage import is_file, list_directory, upload_temp_file, HF_REPO_ID
-from .ytmusic import process_and_stream_ytmusic
 from .auth import verify_token
 
-# Phase 6: Rate Limiting setup
-limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 templates = Jinja2Templates(directory="app/templates")
 
@@ -107,15 +99,6 @@ async def handle_upload(files: list[UploadFile] = File(...), _ = Depends(verify_
 
     return {"files": results}
 
-# Phase 5: Public, rate-limited YouTube Music downloader
-@app.post("/api/ytmusic")
-@limiter.limit("10/hour")
-async def ytmusic_endpoint(request: Request, url: str = Form(...), background_tasks: BackgroundTasks = BackgroundTasks()):
-    try:
-        return process_and_stream_ytmusic(url, background_tasks)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.get("/{path:path}")
 async def serve(request: Request, path: str):
     clean_path = path.strip("/")
@@ -129,8 +112,6 @@ async def serve(request: Request, path: str):
 
     if clean_path == "upload":
         return templates.TemplateResponse(request, "index.html", {"page": "upload"})
-    if clean_path == "ytmusic":
-        return templates.TemplateResponse(request, "index.html", {"page": "ytmusic"})
     
     # Phase 1/2: UI Rendering (File vs Directory logic)
     if clean_path and await is_file(clean_path):
