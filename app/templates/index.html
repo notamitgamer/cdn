@@ -6,188 +6,304 @@
     <title>CDN | {{ page | capitalize }}</title>
     <style>
         :root {
-            --accent: #60a5fa;
-            --accent-dark: #3b82f6;
-            --bg: #0b0f14;
-            --surface: #12171f;
-            --surface-2: #1a212b;
-            --text: #e6edf3;
-            --text-dim: #8b96a5;
-            --border: #232b36;
-            --danger-bg: #3a1518;
-            --danger-text: #ffb4ab;
+            --bg: #0d1117;
+            --surface: #161b22;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent-pink: #ffb4ab;
+            --border: #21262d;
+            --danger: #f85149;
         }
+        
         * { box-sizing: border-box; }
+        
         body {
-            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
             background: var(--bg);
-            color: var(--text);
+            color: var(--text-main);
             margin: 0;
-            padding: 2.5rem 1.5rem;
+            padding: 3rem 1.5rem;
+            line-height: 1.6;
+            font-size: 0.9rem;
         }
+
         .container {
-            max-width: 800px;
+            max-width: 760px;
             margin: 0 auto;
-            background: var(--surface);
-            padding: 2rem;
-            border-radius: 12px;
-            border: 1px solid var(--border);
         }
-        a { color: var(--accent); text-decoration: none; }
+
+        /* Header styling matching the screenshot */
+        .top-accent {
+            width: 48px;
+            height: 2px;
+            background: linear-gradient(90deg, #5eead4 0%, #5eead4 33%, #fca5a5 33%, #fca5a5 66%, #ffffff 66%, #ffffff 100%);
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #ffffff;
+            font-weight: 600;
+            margin: 0 0 1.5rem 0;
+        }
+
+        p.intro {
+            color: var(--text-main);
+            margin-bottom: 1.5rem;
+        }
+
+        blockquote {
+            border-left: 2px solid var(--accent-pink);
+            margin: 0 0 2.5rem 0;
+            padding-left: 1rem;
+            color: var(--text-dim);
+        }
+
+        a { color: var(--accent-pink); text-decoration: none; }
         a:hover { text-decoration: underline; }
-        .nav { margin-bottom: 2rem; font-size: 0.95rem; color: var(--text-dim); }
-        .nav a { color: var(--text-dim); }
-        .nav a:hover { color: var(--accent); }
+
+        .breadcrumb {
+            color: var(--accent-pink);
+            margin-bottom: 1rem;
+        }
+        .breadcrumb a { color: inherit; }
+
+        .list-container {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg);
+            margin-bottom: 2rem;
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: inherit;
+        }
+        .filter-input:focus {
+            outline: none;
+            background: var(--surface);
+        }
+        .filter-input::placeholder { color: var(--text-dim); }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            text-decoration: none;
+            color: var(--accent-pink);
+        }
+        .list-item:hover {
+            background: var(--surface);
+            text-decoration: none;
+        }
+        .list-item:last-child { border-bottom: none; }
+        
+        .item-name {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            word-break: break-all;
+        }
+        .item-name svg {
+            color: var(--text-dim);
+            flex-shrink: 0;
+        }
+        
+        .item-meta {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            white-space: nowrap;
+            display: flex;
+            gap: 1rem;
+        }
+        .item-meta a { color: var(--text-dim); }
+        .item-meta a:hover { color: var(--accent-pink); }
 
         .btn {
             display: inline-block;
-            background: var(--accent-dark);
-            color: #fff;
-            padding: 0.55rem 1.1rem;
-            border-radius: 6px;
-            border: none;
+            background: var(--surface);
+            color: var(--text-main);
+            padding: 0.4rem 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
             cursor: pointer;
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
+            font-family: inherit;
+            font-size: 0.85rem;
         }
-        .btn:hover { background: var(--accent); text-decoration: none; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
-        .btn-secondary:hover { background: #232b36; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-        th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); }
-        th { font-weight: 500; color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; }
-        tr:last-child td { border-bottom: none; }
-
-        .form-group { margin-bottom: 1.2rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; color: var(--text-dim); }
-        .form-group input {
-            width: 100%; padding: 0.6rem 0.75rem; border: 1px solid var(--border);
-            border-radius: 6px; background: var(--surface-2); color: var(--text); font-size: 0.95rem;
+        .btn:hover { background: #21262d; text-decoration: none; border-color: #30363d; }
+        
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: var(--text-dim); }
+        .form-group input[type="password"],
+        .form-group input[type="text"] {
+            width: 100%; padding: 0.75rem; border: 1px solid var(--border);
+            border-radius: 4px; background: var(--surface); color: var(--text-main);
+            font-family: inherit;
         }
-        .form-group input:focus { outline: none; border-color: var(--accent); }
 
         #dropzone {
-            border: 2px dashed var(--border);
-            border-radius: 10px;
-            padding: 2.5rem 1.5rem;
+            border: 1px dashed var(--border);
+            border-radius: 4px;
+            padding: 3rem 1.5rem;
             text-align: center;
             cursor: pointer;
-            background: var(--surface-2);
-            transition: border-color 0.15s, background 0.15s;
+            color: var(--text-dim);
             margin-bottom: 1.5rem;
+            transition: all 0.2s;
         }
-        #dropzone.dragover { border-color: var(--accent); background: #16202e; }
-        #dropzone .hint { color: var(--text-dim); font-size: 0.85rem; margin-top: 0.4rem; }
+        #dropzone:hover, #dropzone.dragover {
+            border-color: var(--accent-pink);
+            color: var(--accent-pink);
+            background: rgba(255, 180, 171, 0.05);
+        }
 
         .file-row {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 0.7rem 0.9rem; background: var(--surface-2); border-radius: 8px;
-            margin-bottom: 0.6rem; gap: 1rem;
+            display: flex; justify-content: space-between; padding: 0.75rem;
+            border: 1px solid var(--border); border-radius: 4px; margin-bottom: 0.5rem;
         }
-        .file-row .name { font-size: 0.9rem; word-break: break-all; }
-        .file-row .status { font-size: 0.8rem; color: var(--text-dim); white-space: nowrap; }
-        .file-row.done .status { color: #4ade80; }
-        .file-row.error .status { color: var(--danger-text); }
-        .file-row .links { font-size: 0.8rem; margin-top: 0.2rem; }
-        .file-row .links a { margin-right: 0.8rem; }
+        .file-row.done { border-color: #2ea043; }
+        .file-row.error { border-color: var(--danger); }
 
-        #error-box {
-            display: none; background: var(--danger-bg); color: var(--danger-text);
-            padding: 0.9rem 1rem; border-radius: 8px; margin-bottom: 1.2rem; font-size: 0.9rem;
+        footer {
+            margin-top: 4rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
         }
+        footer a { color: var(--text-dim); }
+        footer a:hover { color: var(--text-main); }
     </style>
 </head>
 <body>
     <div class="container">
-        <nav class="nav">
-            <a href="/">~ Root</a>
-            {% if page in ['listing', 'file'] and path %}
+        {% if page == 'listing' and not path %}
+        <div class="top-accent"></div>
+        <h1>HEY, THIS IS MY CDN.</h1>
+        <p class="intro">Assets for my other sites. Meant for me, but you're welcome to look around.</p>
+        <blockquote>
+            Please don't hotlink. I can change these URLs at any point without warning, so anything pointing here may break.
+        </blockquote>
+        {% endif %}
+
+        {% if page != 'listing' or path %}
+        <div class="top-accent" style="margin-bottom: 1.5rem;"></div>
+        {% endif %}
+
+        <div class="breadcrumb">
+            <a href="/">cdn</a>
+            {% if path %}
                 {% set parts = path.split('/') %}
                 {% set current = namespace(val='') %}
                 {% for part in parts %}
                     {% set current.val = current.val + part + '/' %}
                     / <a href="/{{ current.val[:-1] }}">{{ part }}</a>
                 {% endfor %}
-            {% elif page == 'upload' %}
-                / <a href="/upload">upload</a>
             {% endif %}
-        </nav>
-
-        <!-- Directory Listing View -->
-        {% if page == 'listing' %}
-        {% if not path %}
-        <div style="margin-bottom: 1.5rem;">
-            <a href="/upload" class="btn">Upload Files</a>
+            {% if page == 'upload' %}
+                / <a href="/upload">upload</a>
+            {% elif page == 'file' %}
+                / {{ filename }}
+            {% endif %}
         </div>
-        {% endif %}
-        <table>
-            <thead>
-                <tr><th>Name</th><th>Size</th><th>Action</th></tr>
-            </thead>
-            <tbody>
-                {% if path %}
-                <tr>
-                    <td><a href="../">.. (parent)</a></td>
-                    <td>-</td>
-                    <td></td>
-                </tr>
-                {% endif %}
-                {% for item in items %}
-                <tr>
-                    <td>
-                        {% if item.is_dir %}
-                        <a href="/{{ item.path }}">{{ item.name }}/</a>
-                        {% else %}
-                        <a href="/raw/{{ item.path }}">{{ item.name }}</a>
-                        {% endif %}
-                    </td>
-                    <td>{{ item.size_str }}</td>
-                    <td>
-                        {% if item.is_dir %}
-                        <a href="/{{ item.path }}" class="btn btn-secondary">Open</a>
-                        {% else %}
-                        <a href="/api/download/{{ item.path }}" class="btn">Download</a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-                {% if not items %}
-                <tr><td colspan="3" style="text-align: center; padding: 2rem; color: var(--text-dim);">Empty directory</td></tr>
-                {% endif %}
-            </tbody>
-        </table>
 
-        <!-- Single File View -->
-        {% elif page == 'file' %}
-        <div style="text-align: center; padding: 3rem 0;">
-            <h2>{{ filename }}</h2>
-            <p style="color: var(--text-dim); margin-bottom: 2rem;">{{ path }}</p>
-            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-                <a href="/api/download/{{ path }}" class="btn">Download File</a>
-                <a href="/raw/{{ path }}" class="btn btn-secondary">Open Raw</a>
-                <button onclick="copyToClipboard(window.location.origin + '/' + '{{ path }}')" class="btn btn-secondary">Copy Link</button>
-                <button onclick="copyToClipboard(window.location.origin + '/raw/' + '{{ path }}')" class="btn btn-secondary">Copy Raw Link</button>
+        {% if page == 'listing' %}
+        <div class="list-container">
+            <input type="text" id="filter-input" class="filter-input" placeholder="Filter this folder..." autocomplete="off" spellcheck="false">
+            
+            <div id="file-list">
+                {% if path %}
+                <a href="../" class="list-item" data-name="..">
+                    <div class="item-name">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 1 1 0 8h-1"/></svg>
+                        ..
+                    </div>
+                </a>
+                {% endif %}
+
+                {% for item in items %}
+                <a href="/{{ item.path }}" class="list-item" data-name="{{ item.name }}">
+                    <div class="item-name">
+                        {% if item.is_dir %}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        {{ item.name }}/
+                        {% else %}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                        {{ item.name }}
+                        {% endif %}
+                    </div>
+                    <div class="item-meta">
+                        {% if not item.is_dir %}
+                        <span>{{ item.size_str }}</span>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+                
+                {% if not items %}
+                <div class="list-item" style="color: var(--text-dim); justify-content: center; pointer-events: none;">
+                    Empty directory
+                </div>
+                {% endif %}
             </div>
         </div>
 
-        <!-- Token-Protected Multi-File Upload View -->
+        <script>
+            // Client-side quick filter
+            const filterInput = document.getElementById('filter-input');
+            const fileList = document.querySelectorAll('#file-list .list-item[data-name]');
+            
+            if (filterInput) {
+                filterInput.addEventListener('input', (e) => {
+                    const term = e.target.value.toLowerCase();
+                    fileList.forEach(item => {
+                        const name = item.getAttribute('data-name').toLowerCase();
+                        if (name === '..') return; // Always show parent dir link
+                        item.style.display = name.includes(term) ? 'flex' : 'none';
+                    });
+                });
+            }
+        </script>
+
+        {% elif page == 'file' %}
+        <div class="list-container" style="padding: 3rem 1.5rem; text-align: center;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" stroke-width="1.5" style="margin-bottom: 1rem;"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+            <h2 style="margin: 0 0 0.5rem 0; font-weight: normal; color: var(--accent-pink);">{{ filename }}</h2>
+            <p style="color: var(--text-dim); margin-bottom: 2rem; font-size: 0.85rem; word-break: break-all;">{{ path }}</p>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="/api/download/{{ path }}" class="btn">Download</a>
+                <a href="/raw/{{ path }}" class="btn">Open Raw</a>
+                <button onclick="copyToClipboard(window.location.origin + '/' + '{{ path }}')" class="btn">Copy Link</button>
+                <button onclick="copyToClipboard(window.location.origin + '/raw/' + '{{ path }}')" class="btn">Copy Raw Link</button>
+            </div>
+        </div>
+
         {% elif page == 'upload' %}
-        <h2>Upload Files</h2>
         <div class="form-group">
-            <label>Admin Token</label>
-            <input type="password" id="token" placeholder="Bearer token" required>
+            <label>admin token</label>
+            <input type="password" id="token" placeholder="Bearer..." required>
         </div>
 
         <div id="dropzone">
-            <div>Click, or drag &amp; drop files here</div>
-            <div class="hint">Multiple files supported &middot; any type</div>
+            <div>drag &amp; drop files here</div>
+            <div style="font-size: 0.8rem; margin-top: 0.5rem;">or click to select</div>
             <input type="file" id="file-input" multiple style="display:none;">
         </div>
 
-        <div id="error-box"></div>
+        <div id="error-box" style="display: none; color: var(--danger); margin-bottom: 1rem; padding: 0.75rem; border: 1px solid var(--danger); border-radius: 4px;"></div>
         <div id="results"></div>
 
         <script>
@@ -201,8 +317,7 @@
             dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
             dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
             dropzone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropzone.classList.remove('dragover');
+                e.preventDefault(); dropzone.classList.remove('dragover');
                 if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
             });
             fileInput.addEventListener('change', () => {
@@ -217,14 +332,14 @@
             function handleFiles(fileList) {
                 errorBox.style.display = 'none';
                 const token = tokenInput.value.trim();
-                if (!token) { showError('Enter your admin token first.'); return; }
+                if (!token) { showError('admin token required.'); return; }
 
                 const files = Array.from(fileList);
                 const rows = {};
                 files.forEach(f => {
                     const row = document.createElement('div');
                     row.className = 'file-row';
-                    row.innerHTML = `<div><div class="name">${f.name}</div><div class="links"></div></div><div class="status">Uploading...</div>`;
+                    row.innerHTML = `<div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:1rem;">${f.name}</div><div class="status" style="color:var(--text-dim); white-space:nowrap;">uploading...</div>`;
                     results.prepend(row);
                     rows[f.name] = row;
                 });
@@ -250,47 +365,54 @@
                                 const row = rows[item.filename];
                                 if (!row) return;
                                 row.classList.add('done');
-                                row.querySelector('.status').textContent = 'Done';
-                                row.querySelector('.links').innerHTML =
-                                    `<a href="${item.raw_url}" target="_blank">Raw link</a>` +
-                                    `<a href="${item.cdn_url}" target="_blank">View</a>`;
+                                row.innerHTML = `
+                                    <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:1rem; color: #2ea043;">${item.filename}</div>
+                                    <div style="white-space:nowrap; display:flex; gap:0.75rem;">
+                                        <a href="${item.raw_url}" target="_blank">raw</a>
+                                        <a href="${item.cdn_url}" target="_blank">view</a>
+                                    </div>
+                                `;
                             });
-                        } catch (err) {
-                            showError('Invalid response from server.');
-                        }
+                        } catch (err) { showError('invalid response from server.'); }
                     } else {
-                        let msg = 'Upload failed.';
+                        let msg = 'upload failed.';
                         try { msg = JSON.parse(xhr.responseText).detail || msg; } catch (e) {}
                         showError(msg);
                         files.forEach(f => {
                             rows[f.name].classList.add('error');
-                            rows[f.name].querySelector('.status').textContent = 'Failed';
+                            rows[f.name].querySelector('.status').textContent = 'failed';
+                            rows[f.name].querySelector('.status').style.color = 'var(--danger)';
                         });
                     }
                     fileInput.value = '';
                 };
-
-                xhr.onerror = () => {
-                    showError('Could not connect to server.');
-                    files.forEach(f => {
-                        rows[f.name].classList.add('error');
-                        rows[f.name].querySelector('.status').textContent = 'Failed';
-                    });
-                };
-
+                xhr.onerror = () => { showError('connection error.'); };
                 xhr.send(formData);
             }
         </script>
-
         {% endif %}
+
+        <footer>
+            <div>
+                {% if page == 'listing' and items %}
+                    {{ items|length }} items
+                {% else %}
+                    cdn
+                {% endif %}
+                · &copy; 2026 · assets may move without notice
+            </div>
+            <div>
+                <a href="/upload">upload</a>
+            </div>
+        </footer>
     </div>
 
     <script>
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                alert('Copied to clipboard!');
+                // visual feedback could go here
             }).catch(err => {
-                console.error('Failed to copy: ', err);
+                console.error('failed to copy: ', err);
             });
         }
     </script>
