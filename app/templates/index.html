@@ -380,11 +380,11 @@
                                 const row = rows[item.filename];
                                 if (!row) return;
                                 row.classList.add('done');
+                                const rawPath = item.raw_url.substring(item.raw_url.indexOf('/raw/'));
                                 row.innerHTML = `
                                     <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:1rem; color: #2ea043;">${item.filename}</div>
                                     <div style="white-space:nowrap; display:flex; gap:0.75rem;">
-                                        <a href="${item.raw_url}" target="_blank">raw</a>
-                                        <a href="${item.cdn_url}" target="_blank">view</a>
+                                        <a href="${rawPath}" target="_blank">raw</a>
                                     </div>
                                 `;
                             });
