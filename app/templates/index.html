@@ -32,7 +32,6 @@
             margin: 0 auto;
         }
 
-        /* Header styling matching the screenshot */
         .top-accent {
             width: 48px;
             height: 2px;
@@ -56,8 +55,13 @@
 
         blockquote {
             border-left: 2px solid var(--accent-pink);
-            margin: 0 0 2.5rem 0;
+            margin: 0 0 1.5rem 0;
             padding-left: 1rem;
+            color: var(--text-dim);
+        }
+
+        .upload-notice {
+            margin-bottom: 2.5rem;
             color: var(--text-dim);
         }
 
@@ -93,18 +97,17 @@
         }
         .filter-input::placeholder { color: var(--text-dim); }
 
+        /* Updated list-item so only the links are clickable */
         .list-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0.75rem 1rem;
             border-bottom: 1px solid var(--border);
-            text-decoration: none;
-            color: var(--accent-pink);
+            color: var(--text-main);
         }
         .list-item:hover {
             background: var(--surface);
-            text-decoration: none;
         }
         .list-item:last-child { border-bottom: none; }
         
@@ -120,14 +123,23 @@
         }
         
         .item-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
             color: var(--text-dim);
             font-size: 0.8rem;
             white-space: nowrap;
-            display: flex;
-            gap: 1rem;
         }
-        .item-meta a { color: var(--text-dim); }
-        .item-meta a:hover { color: var(--accent-pink); }
+
+        .download-icon {
+            color: var(--text-dim);
+            transition: color 0.15s;
+            display: flex;
+            align-items: center;
+        }
+        .download-icon:hover {
+            color: var(--accent-pink);
+        }
 
         .btn {
             display: inline-block;
@@ -141,15 +153,6 @@
             font-size: 0.85rem;
         }
         .btn:hover { background: #21262d; text-decoration: none; border-color: #30363d; }
-        
-        .form-group { margin-bottom: 1.5rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; color: var(--text-dim); }
-        .form-group input[type="password"],
-        .form-group input[type="text"] {
-            width: 100%; padding: 0.75rem; border: 1px solid var(--border);
-            border-radius: 4px; background: var(--surface); color: var(--text-main);
-            font-family: inherit;
-        }
 
         #dropzone {
             border: 1px dashed var(--border);
@@ -196,6 +199,9 @@
         <blockquote>
             Please don't hotlink. I can change these URLs at any point without warning, so anything pointing here may break.
         </blockquote>
+        <div class="upload-notice">
+            If you want to upload anything, go to <a href="/upload">here</a> and upload and you will get a link.
+        </div>
         {% endif %}
 
         {% if page != 'listing' or path %}
@@ -225,35 +231,40 @@
             
             <div id="file-list">
                 {% if path %}
-                <a href="../" class="list-item" data-name="..">
+                <!-- Note the change: list-item is now a div, only the '..' is an a tag -->
+                <div class="list-item" data-name="..">
                     <div class="item-name">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 1 1 0 8h-1"/></svg>
-                        ..
+                        <a href="../">..</a>
                     </div>
-                </a>
+                </div>
                 {% endif %}
 
                 {% for item in items %}
-                <a href="/{{ item.path }}" class="list-item" data-name="{{ item.name }}">
+                <div class="list-item" data-name="{{ item.name }}">
                     <div class="item-name">
                         {% if item.is_dir %}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                        {{ item.name }}/
+                        <a href="/{{ item.path }}">{{ item.name }}/</a>
                         {% else %}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-                        {{ item.name }}
+                        <!-- Routes directly to raw for files -->
+                        <a href="/raw/{{ item.path }}">{{ item.name }}</a>
                         {% endif %}
                     </div>
                     <div class="item-meta">
                         {% if not item.is_dir %}
                         <span>{{ item.size_str }}</span>
+                        <a href="/api/download/{{ item.path }}" class="download-icon" title="Download">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+                        </a>
                         {% endif %}
                     </div>
-                </a>
+                </div>
                 {% endfor %}
                 
                 {% if not items %}
-                <div class="list-item" style="color: var(--text-dim); justify-content: center; pointer-events: none;">
+                <div class="list-item" style="color: var(--text-dim); justify-content: center;">
                     Empty directory
                 </div>
                 {% endif %}
@@ -261,7 +272,6 @@
         </div>
 
         <script>
-            // Client-side quick filter
             const filterInput = document.getElementById('filter-input');
             const fileList = document.querySelectorAll('#file-list .list-item[data-name]');
             
@@ -292,10 +302,12 @@
         </div>
 
         {% elif page == 'upload' %}
-        <div class="form-group">
-            <label>admin token</label>
-            <input type="password" id="token" placeholder="Bearer..." required>
-        </div>
+        <p class="intro" style="margin-bottom: 2rem;">
+            If you do not remember the link, go to the <a href="/uploads">upload folder</a> (https://cdn.amit.is-a.dev/uploads) to find your file.
+        </p>
+
+        <!-- Hidden token field containing the hardcoded password -->
+        <input type="hidden" id="token" value="Amitthehack2006">
 
         <div id="dropzone">
             <div>drag &amp; drop files here</div>
@@ -331,8 +343,8 @@
 
             function handleFiles(fileList) {
                 errorBox.style.display = 'none';
-                const token = tokenInput.value.trim();
-                if (!token) { showError('admin token required.'); return; }
+                // Grabbing the hidden hardcoded password
+                const token = tokenInput.value;
 
                 const files = Array.from(fileList);
                 const rows = {};
@@ -349,6 +361,8 @@
 
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', '/api/upload', true);
+                
+                // Automatically append the Bearer prefix and token for backend authentication
                 xhr.setRequestHeader('Authorization', 'Bearer ' + token);
 
                 xhr.upload.onprogress = (e) => {
@@ -395,7 +409,7 @@
         <footer>
             <div>
                 {% if page == 'listing' and items %}
-                    {{ items|length }} items
+                    {{ items|length }} files
                 {% else %}
                     cdn
                 {% endif %}
