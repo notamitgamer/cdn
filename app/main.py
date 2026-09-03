@@ -27,12 +27,22 @@ async def stream_raw(path: str):
         await client.aclose()
         raise HTTPException(status_code=404, detail="File not found")
     
-    guessed_type, _ = mimetypes.guess_type(path)
+    filename = path.split("/")[-1].lower()
     
-    if not guessed_type or guessed_type.startswith("text/"):
+    raw_no_ext_files = {"dockerfile", "makefile", "license", "readme", "cname"}
+    
+    if filename in raw_no_ext_files:
         content_type = "text/plain"
     else:
-        content_type = guessed_type
+        guessed_type, _ = mimetypes.guess_type(filename)
+        
+        if guessed_type:
+            if guessed_type.startswith("text/"):
+                content_type = "text/plain"
+            else:
+                content_type = guessed_type 
+        else:
+            content_type = "text/plain"
 
     headers = {
         "Access-Control-Allow-Origin": "*",
