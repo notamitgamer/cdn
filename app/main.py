@@ -35,6 +35,7 @@ async def stream_raw(path: str):
     r = await client.send(req, stream=True)
     
     if r.status_code != 200:
+        await client.aclose()
         raise HTTPException(status_code=404, detail="File not found")
     
     headers = {
@@ -42,7 +43,15 @@ async def stream_raw(path: str):
         "Cache-Control": "public, max-age=31536000",
         "Content-Type": r.headers.get("Content-Type", "application/octet-stream")
     }
-    return StreamingResponse(r.aiter_raw(), headers=headers)
+    
+    async def stream_generator():
+        try:
+            async for chunk in r.aiter_raw():
+                yield chunk
+        finally:
+            await client.aclose()
+            
+    return StreamingResponse(stream_generator(), headers=headers)
 
 @app.get("/api/download/{path:path}")
 async def download_file(path: str):
@@ -53,6 +62,7 @@ async def download_file(path: str):
     r = await client.send(req, stream=True)
     
     if r.status_code != 200:
+        await client.aclose()
         raise HTTPException(status_code=404, detail="Not found")
     
     filename = path.split("/")[-1]
@@ -60,7 +70,15 @@ async def download_file(path: str):
         "Content-Disposition": f'attachment; filename="{filename}"',
         "Content-Type": r.headers.get("Content-Type", "application/octet-stream")
     }
-    return StreamingResponse(r.aiter_raw(), headers=headers)
+    
+    async def stream_generator():
+        try:
+            async for chunk in r.aiter_raw():
+                yield chunk
+        finally:
+            await client.aclose()
+            
+    return StreamingResponse(stream_generator(), headers=headers)
 
 # Phase 4: Token-protected Upload endpoint
 @app.post("/api/upload")

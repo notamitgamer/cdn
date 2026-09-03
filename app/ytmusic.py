@@ -6,6 +6,15 @@ from fastapi import BackgroundTasks
 from fastapi.responses import FileResponse
 
 # Phase 5: YouTube Music processing
+def filter_duration_and_live(info, *, incomplete):
+    """Reject live streams and videos over 20 minutes to save Render CPU/resources."""
+    duration = info.get('duration')
+    if duration and duration > 1200:
+        return 'Video is too long (max 20 minutes)'
+    if info.get('is_live'):
+        return 'Live streams are not supported'
+    return None
+
 def process_and_stream_ytmusic(url: str, background_tasks: BackgroundTasks):
     temp_dir = tempfile.mkdtemp()
     
@@ -17,6 +26,7 @@ def process_and_stream_ytmusic(url: str, background_tasks: BackgroundTasks):
             'audio_quality': '0',
             'outtmpl': os.path.join(temp_dir, '%(artist)s - %(title)s.%(ext)s'),
             'noplaylist': True,
+            'match_filter': filter_duration_and_live,
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
