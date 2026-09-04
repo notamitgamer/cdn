@@ -240,6 +240,58 @@
             background-color: var(--accent-pink);
         }
 
+        /* Dim + slightly blur the content while Turbo is fetching the next
+           page, so navigation doesn't feel like nothing happened. */
+        .container {
+            transition: opacity 0.15s ease;
+        }
+        body.turbo-loading .container {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 3rem 1.5rem;
+            color: var(--text-dim);
+        }
+        .empty-state svg { opacity: 0.6; }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .copy-path-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            padding: 0.15rem;
+            transition: color 0.15s;
+        }
+        .copy-path-btn:hover { color: var(--accent-pink); }
+
+        .listing-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 0.75rem;
+        }
+
+        .modified-label {
+            min-width: 4.5rem;
+            text-align: right;
+        }
+        @media (max-width: 480px) {
+            .modified-label { display: none; }
+        }
+
         footer {
             margin-top: 4rem;
             padding-top: 1rem;
@@ -273,7 +325,7 @@
         <div class="top-accent" style="margin-bottom: 1.5rem;"></div>
         {% endif %}
 
-        <div class="breadcrumb">
+        <div class="breadcrumb" id="breadcrumb">
             <a href="/">cdn</a>
             {% if path %}
                 {% set parts = path.split('/') %}
@@ -288,11 +340,23 @@
             {% elif page == 'file' %}
                 / {{ filename }}
             {% endif %}
+            {% if path or page == 'file' %}
+            <button type="button" class="copy-path-btn" title="Copy path" onclick="copyBreadcrumbPath(this)" data-path="{{ path }}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
+            {% endif %}
         </div>
 
         {% if page == 'listing' %}
+        {% if items %}
+        <div class="listing-toolbar">
+            <a href="/api/download-zip/{{ path }}" class="btn" data-turbo="false" title="Download everything in this folder as a .zip">
+                Download all (.zip)
+            </a>
+        </div>
+        {% endif %}
         <div class="list-container">
-            <input type="text" id="filter-input" class="filter-input" placeholder="Filter this folder..." autocomplete="off" spellcheck="false">
+            <input type="text" id="filter-input" class="filter-input" placeholder="Filter this folder... (press / to focus)" autocomplete="off" spellcheck="false">
             
             <div id="file-list">
                 {% if path %}
@@ -318,6 +382,7 @@
                     </div>
                     <div class="item-meta">
                         {% if not item.is_dir %}
+                        <span class="modified-label">{{ item.modified_str }}</span>
                         <span>{{ item.size_str }}</span>
                         <!-- ADD data-turbo="false" to download links -->
                         <a href="/api/download/{{ item.path }}" class="download-icon" title="Download" data-turbo="false">
@@ -329,8 +394,9 @@
                 {% endfor %}
                 
                 {% if not items %}
-                <div class="list-item" style="color: var(--text-dim); justify-content: center;">
-                    Empty directory
+                <div class="empty-state">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    <span>Empty directory</span>
                 </div>
                 {% endif %}
             </div>
@@ -362,8 +428,8 @@
                 <!-- ADD data-turbo="false" to these action buttons -->
                 <a href="/api/download/{{ path }}" class="btn" data-turbo="false">Download</a>
                 <a href="{{ raw_base_url }}/{{ path }}" class="btn" data-turbo="false">Open Raw</a>
-                <button onclick="copyToClipboard(window.location.origin + '/' + '{{ path }}')" class="btn">Copy Link</button>
-                <button onclick="copyToClipboard('{{ raw_base_url }}/{{ path }}')" class="btn">Copy Raw Link</button>
+                <button onclick="copyToClipboard(window.location.origin + '/' + '{{ path }}', this)" class="btn">Copy Link</button>
+                <button onclick="copyToClipboard('{{ raw_base_url }}/{{ path }}', this)" class="btn">Copy Raw Link</button>
             </div>
         </div>
 
@@ -395,6 +461,11 @@
             const results = document.getElementById('results');
             const errorBox = document.getElementById('error-box');
 
+            // Client-side guardrail only — the real limit still needs to be
+            // enforced server-side; this just avoids a slow/failed upload
+            // and gives the user immediate feedback instead.
+            const MAX_FILE_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB
+
             dropzone.addEventListener('click', () => fileInput.click());
             dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
             dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
@@ -411,10 +482,35 @@
                 errorBox.style.display = 'block';
             }
 
+            function formatBytes(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+
             function handleFiles(fileList) {
                 errorBox.style.display = 'none';
 
-                const files = Array.from(fileList);
+                const allFiles = Array.from(fileList);
+                const files = [];
+                const rejected = [];
+
+                allFiles.forEach(f => {
+                    if (f.size > MAX_FILE_SIZE_BYTES) {
+                        rejected.push(f.name);
+                    } else {
+                        files.push(f);
+                    }
+                });
+
+                if (rejected.length) {
+                    showError(
+                        `Skipped ${rejected.length} file(s) over ${formatBytes(MAX_FILE_SIZE_BYTES)}: ${rejected.join(', ')}`
+                    );
+                }
+
+                if (!files.length) return;
+
                 const rows = {};
                 files.forEach(f => {
                     const row = document.createElement('div');
@@ -485,9 +581,27 @@
     </div>
 
     <script>
-        function copyToClipboard(text) {
+        function copyToClipboard(text, btn) {
             navigator.clipboard.writeText(text).then(() => {
-                // visual feedback could go here
+                if (!btn) return;
+                const original = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.disabled = true;
+                setTimeout(() => {
+                    btn.textContent = original;
+                    btn.disabled = false;
+                }, 1500);
+            }).catch(err => {
+                console.error('failed to copy: ', err);
+            });
+        }
+
+        function copyBreadcrumbPath(btn) {
+            const path = btn.getAttribute('data-path') || '';
+            navigator.clipboard.writeText(path).then(() => {
+                const original = btn.innerHTML;
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+                setTimeout(() => { btn.innerHTML = original; }, 1200);
             }).catch(err => {
                 console.error('failed to copy: ', err);
             });
@@ -504,6 +618,32 @@
                 });
             });
         }
+
+        // Dim the page immediately while Turbo fetches the next page, and
+        // make the built-in Turbo progress bar show up without its default
+        // delay, so navigation always gives some visual feedback.
+        document.addEventListener('turbo:load', () => {
+            if (window.Turbo && window.Turbo.setProgressBarDelay) {
+                window.Turbo.setProgressBarDelay(0);
+            }
+        }, { once: true });
+        document.addEventListener('turbo:click', () => document.body.classList.add('turbo-loading'));
+        document.addEventListener('turbo:before-fetch-request', () => document.body.classList.add('turbo-loading'));
+        document.addEventListener('turbo:before-render', () => document.body.classList.remove('turbo-loading'));
+        document.addEventListener('turbo:render', () => document.body.classList.remove('turbo-loading'));
+
+        // Press "/" anywhere (outside of a text field) to jump into the
+        // filter box on listing pages.
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== '/') return;
+            const tag = (document.activeElement && document.activeElement.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+            const filterInput = document.getElementById('filter-input');
+            if (filterInput) {
+                e.preventDefault();
+                filterInput.focus();
+            }
+        });
     </script>
 </body>
 </html>

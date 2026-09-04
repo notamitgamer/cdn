@@ -48,7 +48,9 @@ def list_directory(path: str):
         return cached
 
     try:
-        items = list(api.list_repo_tree(repo_id=HF_REPO_ID, path_in_repo=path, repo_type="dataset"))
+        items = list(api.list_repo_tree(
+            repo_id=HF_REPO_ID, path_in_repo=path, repo_type="dataset", expand_info=True
+        ))
     except Exception:
         return []
     
@@ -67,17 +69,60 @@ def list_directory(path: str):
             else:
                 size_str = f"{size / (1024 * 1024):.1f} MB"
 
+        # last_commit is only populated when expand_info=True is passed to
+        # list_repo_tree; we fetch it lazily below only if available, so this
+        # degrades gracefully to "-" rather than failing the whole listing.
+        last_modified = getattr(item, "last_commit", None)
+        modified_str = "-"
+        if last_modified is not None:
+            date = getattr(last_modified, "date", None)
+            if date is not None:
+                modified_str = date.strftime("%Y-%m-%d")
+
         files_and_folders.append({
             "name": name,
             "path": item.path,
             "is_dir": is_dir,
-            "size_str": size_str
+            "size_str": size_str,
+            "modified_str": modified_str
         })
     
     files_and_folders.sort(key=lambda x: (not x["is_dir"], x["name"].lower()))
     
     _set_cache(cache_key, files_and_folders)
     return files_and_folders
+
+# Hard cap so a zip-download request can't be used to pull an unbounded
+# amount of data through the server at once.
+ZIP_MAX_FILES = 300
+ZIP_MAX_TOTAL_BYTES = 500 * 1024 * 1024  # 500 MB
+
+def list_files_recursive(path: str):
+    """
+    Returns a flat list of every file (not folder) under `path`, for
+    building a zip archive. Raises ValueError if the folder is too big
+    to safely zip in one request.
+    """
+    try:
+        items = list(api.list_repo_tree(
+            repo_id=HF_REPO_ID, path_in_repo=path, repo_type="dataset", recursive=True
+        ))
+    except Exception:
+        return []
+
+    files = []
+    total_size = 0
+    for item in items:
+        if hasattr(item, "size"):  # files only, skip folder entries
+            size = getattr(item, "size", 0) or 0
+            total_size += size
+            files.append({"path": item.path, "size": size})
+            if len(files) > ZIP_MAX_FILES or total_size > ZIP_MAX_TOTAL_BYTES:
+                raise ValueError(
+                    f"Folder too large to zip (limit: {ZIP_MAX_FILES} files / "
+                    f"{ZIP_MAX_TOTAL_BYTES // (1024 * 1024)} MB)."
+                )
+    return files
 
 def upload_temp_file(temp_path: str, filename: str) -> str:
     """Uploads a local file to HF and returns the relative path."""

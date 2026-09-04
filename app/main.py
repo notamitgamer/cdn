@@ -2,13 +2,15 @@ import os
 import shutil
 import uuid
 import mimetypes
+import io
+import zipfile
 import httpx
 from pathlib import Path
 from fastapi import FastAPI, Request, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
-from .storage import is_file, list_directory, upload_temp_file, HF_REPO_ID
+from .storage import is_file, list_directory, list_files_recursive, upload_temp_file, HF_REPO_ID
 
 app = FastAPI()
 
@@ -153,6 +155,42 @@ async def handle_upload(files: list[UploadFile] = File(...)):
         })
 
     return {"files": results}
+
+@app.get("/api/download-zip/{path:path}")
+async def download_zip(path: str):
+    clean_path = path.strip("/")
+
+    try:
+        files = list_files_recursive(clean_path)
+    except ValueError as e:
+        raise HTTPException(status_code=413, detail=str(e))
+
+    if not files:
+        raise HTTPException(status_code=404, detail="Folder is empty or not found")
+
+    prefix_len = len(clean_path.rstrip("/")) + 1 if clean_path else 0
+
+    buffer = io.BytesIO()
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            for f in files:
+                hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{f['path']}"
+                r = await client.get(hf_url)
+                if r.status_code != 200:
+                    continue  # skip files that fail rather than aborting the whole zip
+                # arcname: path relative to the requested folder, so the zip
+                # doesn't contain the full repo path
+                arcname = f["path"][prefix_len:] if prefix_len else f["path"]
+                zf.writestr(arcname, r.content)
+
+    buffer.seek(0)
+    zip_filename = (clean_path.rstrip("/").split("/")[-1] if clean_path else HF_REPO_ID.split("/")[-1]) + ".zip"
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_filename}"'}
+    )
 
 @app.api_route("/ping", methods=["GET", "HEAD"], response_class=PlainTextResponse)
 async def ping():
