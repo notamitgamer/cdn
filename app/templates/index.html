@@ -230,6 +230,7 @@
         .file-row {
             display: flex; justify-content: space-between; padding: 0.75rem;
             border: 1px solid var(--border); border-radius: 4px; margin-bottom: 0.5rem;
+            align-items: center;
         }
         .file-row.done { border-color: #2ea043; }
         .file-row.error { border-color: var(--danger); }
@@ -325,6 +326,16 @@
         .btn-primary:hover {
             background: #ffc9c2;
             border-color: #ffc9c2;
+        }
+
+        .upload-spinner {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border: 2px solid var(--accent-pink);
+            border-top-color: transparent;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
         }
 
         footer {
@@ -591,7 +602,14 @@
                 xhr.upload.onprogress = (e) => {
                     if (!e.lengthComputable) return;
                     const pct = Math.round((e.loaded / e.total) * 100);
-                    files.forEach(f => { rows[f.name].querySelector('.status').textContent = pct + '%'; });
+                    files.forEach(f => { 
+                        const statusNode = rows[f.name].querySelector('.status');
+                        if (pct === 100) {
+                            statusNode.innerHTML = `<span class="upload-spinner spin-anim"></span><span style="color: var(--accent-pink);">saving to HF...</span>`;
+                        } else {
+                            statusNode.textContent = pct + '%'; 
+                        }
+                    });
                 };
 
                 xhr.onload = () => {
@@ -771,7 +789,7 @@
                 if (e.key !== '/') return;
                 const tag = (document.activeElement && document.activeElement.tagName) || '';
                 if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-                const filterInput = document.getElementById('filter-input');a
+                const filterInput = document.getElementById('filter-input');
                 if (filterInput) {
                     e.preventDefault();
                     filterInput.focus();

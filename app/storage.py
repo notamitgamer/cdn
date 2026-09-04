@@ -9,15 +9,32 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 
 api = HfApi(token=HF_TOKEN)
 
+# LRU Cache implementation
 _cache = {}
 CACHE_TTL = 60
+MAX_CACHE_SIZE = 500
 
 def _get_cache(key):
-    if key in _cache and _cache[key][0] > time.time():
-        return _cache[key][1]
+    if key in _cache:
+        expiry, value = _cache[key]
+        if expiry > time.time():
+            # Move to the end of the dictionary to mark it as most recently used (LRU)
+            _cache[key] = _cache.pop(key)
+            return value
+        else:
+            # Expired
+            del _cache[key]
     return None
 
 def _set_cache(key, value):
+    if key in _cache:
+        # Remove it first so we can re-insert it at the end
+        del _cache[key]
+    elif len(_cache) >= MAX_CACHE_SIZE:
+        # Dictionary is full. Remove the oldest item (which is at the front)
+        oldest_key = next(iter(_cache))
+        del _cache[oldest_key]
+        
     _cache[key] = (time.time() + CACHE_TTL, value)
 
 async def is_file(path: str) -> bool:
@@ -116,8 +133,14 @@ REPO_STATS_CACHE_TTL = 300
 def repo_stats():
     cache_key = "repo_stats"
     now = time.time()
-    if cache_key in _cache and _cache[cache_key][0] > now:
-        return _cache[cache_key][1]
+    if cache_key in _cache:
+        expiry, value = _cache[cache_key]
+        if expiry > now:
+            # Move to end as part of LRU update
+            _cache[cache_key] = _cache.pop(cache_key)
+            return value
+        else:
+            del _cache[cache_key]
 
     try:
         items = list(api.list_repo_tree(
@@ -135,7 +158,7 @@ def repo_stats():
             total_size += getattr(item, "size", 0) or 0
 
     result = {"file_count": file_count, "size_str": format_size(total_size)}
-    _cache[cache_key] = (now + REPO_STATS_CACHE_TTL, result)
+    _set_cache(cache_key, result)
     return result
 
 def upload_temp_file(temp_path: str, filename: str) -> str:
