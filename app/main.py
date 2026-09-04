@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
-from .storage import is_file, list_directory, list_files_recursive, upload_temp_file, HF_REPO_ID
+from .storage import is_file, list_directory, list_files_recursive, upload_temp_file, repo_stats, HF_REPO_ID
 
 app = FastAPI()
 
@@ -57,13 +57,23 @@ RAW_DOMAIN = os.getenv("RAW_DOMAIN", "raw.cdn.amit.is-a.dev")
 RAW_BASE_URL = os.getenv("RAW_BASE_URL", f"https://{RAW_DOMAIN}")
 RAW_PREFIX = "raw/"
 
+def render_context(extra: dict) -> dict:
+    """Merges page-specific context with repo-wide file count / size stats
+    (shown in the footer on every page). repo_stats() is cached, so this
+    doesn't add a fresh full-repo scan on every request."""
+    stats = repo_stats()
+    ctx = dict(extra)
+    ctx["repo_file_count"] = stats["file_count"] if stats else None
+    ctx["repo_size_str"] = stats["size_str"] if stats else None
+    return ctx
+
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc: HTTPException):
     # Keep the raw subdomain returning plain text errors
     if request.url.hostname == RAW_DOMAIN:
         return PlainTextResponse("404: File Not Found", status_code=404)
     # Render UI 404 page for the main CDN domain
-    return templates.TemplateResponse(request, "index.html", {"page": "404"}, status_code=404)
+    return templates.TemplateResponse(request, "index.html", render_context({"page": "404"}), status_code=404)
 
 async def stream_raw(path: str):
     hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
@@ -214,24 +224,24 @@ async def serve(request: Request, path: str):
         return RedirectResponse(f"{RAW_BASE_URL}/{raw_path}")
 
     if clean_path == "upload":
-        return templates.TemplateResponse(request, "index.html", {"page": "upload"})
+        return templates.TemplateResponse(request, "index.html", render_context({"page": "upload"}))
     
     if clean_path and await is_file(clean_path):
         filename = clean_path.split("/")[-1]
-        return templates.TemplateResponse(request, "index.html", {
+        return templates.TemplateResponse(request, "index.html", render_context({
             "page": "file", 
             "path": clean_path,
             "filename": filename,
             "raw_base_url": RAW_BASE_URL
-        })
+        }))
     
     items = list_directory(clean_path)
     if clean_path and not items:
         raise HTTPException(status_code=404, detail="Not Found")
 
-    return templates.TemplateResponse(request, "index.html", {
+    return templates.TemplateResponse(request, "index.html", render_context({
         "page": "listing",
         "path": clean_path,
         "items": items,
         "raw_base_url": RAW_BASE_URL
-    })
+    }))
