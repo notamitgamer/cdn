@@ -380,8 +380,6 @@
             If you do not remember the link, go to the <a href="/uploads">uploads folder</a> to find your file.
         </blockquote>
 
-        <input type="hidden" id="token" value="Amitthehack2006">
-
         <div id="dropzone">
             <div>drag &amp; drop files here</div>
             <div style="font-size: 0.8rem; margin-top: 0.5rem;">or click to select</div>
@@ -394,7 +392,6 @@
         <script>
             const dropzone = document.getElementById('dropzone');
             const fileInput = document.getElementById('file-input');
-            const tokenInput = document.getElementById('token');
             const results = document.getElementById('results');
             const errorBox = document.getElementById('error-box');
 
@@ -416,7 +413,6 @@
 
             function handleFiles(fileList) {
                 errorBox.style.display = 'none';
-                const token = tokenInput.value;
 
                 const files = Array.from(fileList);
                 const rows = {};
@@ -433,8 +429,6 @@
 
                 const xhr = new XMLHttpRequest();
                 xhr.open('POST', '/api/upload', true);
-                
-                xhr.setRequestHeader('Authorization', 'Bearer ' + token);
 
                 xhr.upload.onprogress = (e) => {
                     if (!e.lengthComputable) return;

@@ -4,12 +4,11 @@ import uuid
 import mimetypes
 import httpx
 from pathlib import Path
-from fastapi import FastAPI, Request, File, UploadFile, Depends, HTTPException
+from fastapi import FastAPI, Request, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
 from .storage import is_file, list_directory, upload_temp_file, HF_REPO_ID
-from .auth import verify_token
 
 app = FastAPI()
 
@@ -134,7 +133,7 @@ async def download_file(path: str):
     return StreamingResponse(stream_generator(), headers=headers)
 
 @app.post("/api/upload")
-async def handle_upload(files: list[UploadFile] = File(...), _ = Depends(verify_token)):
+async def handle_upload(files: list[UploadFile] = File(...)):
     results = []
     for file in files:
         temp_path = f"/tmp/{uuid.uuid4()}-{file.filename}"
