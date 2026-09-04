@@ -10,7 +10,8 @@ from fastapi import FastAPI, Request, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
-from .storage import is_file, list_directory, list_files_recursive, upload_temp_file, repo_stats, HF_REPO_ID
+# Added format_size to the import list
+from .storage import is_file, list_directory, list_files_recursive, upload_temp_file, repo_stats, HF_REPO_ID, format_size
 
 app = FastAPI()
 
@@ -77,30 +78,27 @@ async def stream_raw(path: str):
         await client.aclose()
         raise HTTPException(status_code=404, detail="File not found")
     
-    filename = path.split("/")[-1].lower()
-    guessed_type, _ = mimetypes.guess_type(filename)
-    
-    if guessed_type and (
-        guessed_type.startswith("image/") or 
-        guessed_type.startswith("video/") or 
-        guessed_type.startswith("audio/") or 
-        guessed_type == "application/pdf"
-    ):
-        content_type = guessed_type
-    else:
-        content_type = "text/plain; charset=utf-8"
-
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=31536000",
-        "Content-Type": content_type,
-        "Content-Disposition": "inline",
         "X-Content-Type-Options": "nosniff"
     }
     
+    # Safely proxy critical headers (like Content-Encoding for gzip handling)
+    for h in ["Content-Type", "Content-Encoding", "Content-Length", "Etag", "Accept-Ranges"]:
+        if h in r.headers:
+            headers[h] = r.headers[h]
+    
+    # Explicit override for text files in case HF serves as octet-stream
+    filename = path.split("/")[-1].lower()
+    if filename.endswith(".md") or filename.endswith(".txt"):
+        if headers.get("Content-Type", "application/octet-stream") == "application/octet-stream":
+            headers["Content-Type"] = "text/plain; charset=utf-8"
+
     async def stream_generator():
         try:
-            async for chunk in r.aiter_bytes():
+            # Using aiter_raw guarantees we don't accidentally decompress the stream if it's encoded
+            async for chunk in r.aiter_raw():
                 yield chunk
         finally:
             await client.aclose()
@@ -124,9 +122,14 @@ async def download_file(path: str):
         "Content-Type": r.headers.get("Content-Type", "application/octet-stream")
     }
     
+    # Forward length and encoding to allow browser progress bars and raw file integrity
+    for h in ["Content-Length", "Content-Encoding", "Etag"]:
+        if h in r.headers:
+            headers[h] = r.headers[h]
+    
     async def stream_generator():
         try:
-            async for chunk in r.aiter_bytes():
+            async for chunk in r.aiter_raw():
                 yield chunk
         finally:
             await client.aclose()
@@ -154,6 +157,24 @@ async def handle_upload(files: list[UploadFile] = File(...)):
         })
 
     return {"files": results}
+
+@app.get("/api/zip-stats/{path:path}")
+async def zip_stats(path: str):
+    clean_path = path.strip("/")
+    try:
+        files = list_files_recursive(clean_path)
+    except ValueError as e:
+        raise HTTPException(status_code=413, detail=str(e))
+
+    if not files:
+        raise HTTPException(status_code=404, detail="Folder is empty or not found")
+
+    total_size = sum(f["size"] for f in files)
+    return {
+        "file_count": len(files),
+        "total_size": total_size,
+        "size_str": format_size(total_size)
+    }
 
 @app.get("/api/download-zip/{path:path}")
 async def download_zip(path: str):
