@@ -6,20 +6,19 @@
     <title>CDN | {{ page | capitalize }}</title>
     <meta name="description" content="Personal CDN for browsing, uploading, and linking hosted assets.">
 
-    <!-- Favicons & Manifest -->
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16x16.png">
     <link rel="icon" type="image/svg+xml" href="/static/icons/logo.svg">
     <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png">
+
     <link rel="manifest" href="/static/manifest.json">
-    
-    <!-- Meta Theme & Social -->
     <meta name="theme-color" content="#050505">
     <meta name="color-scheme" content="dark">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CDN">
+
     <meta property="og:title" content="CDN | {{ page | capitalize }}">
     <meta property="og:description" content="Personal CDN for browsing, uploading, and linking hosted assets.">
     <meta property="og:image" content="/static/icons/og-logo.png">
@@ -42,7 +41,6 @@
         * { box-sizing: border-box; }
         * { -webkit-tap-highlight-color: transparent; }
         
-        /* Base typography and body layout */
         body {
             font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
             background: var(--bg);
@@ -190,7 +188,9 @@
         }
 
         .btn {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
             background: var(--surface);
             color: var(--text-main);
             padding: 0.4rem 0.8rem;
@@ -199,8 +199,10 @@
             cursor: pointer;
             font-family: inherit;
             font-size: 0.85rem;
+            transition: opacity 0.15s ease;
         }
-        .btn:hover { background: #21262d; text-decoration: none; border-color: #30363d; }
+        .btn:hover:not(:disabled) { background: #21262d; text-decoration: none; border-color: #30363d; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
         @media (max-width: 480px) {
             .btn {
@@ -279,6 +281,51 @@
             margin-bottom: 0.75rem;
         }
 
+        /* Spinner Animations */
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+        .spin-anim {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Modal styling */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+        .modal {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1.5rem;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .modal h3 {
+            margin-top: 0; margin-bottom: 1rem;
+            color: #fff; font-size: 1.2rem;
+            font-weight: 500;
+        }
+        .modal p { margin-bottom: 1.5rem; }
+        .modal-actions {
+            display: flex; justify-content: flex-end; gap: 0.75rem;
+        }
+        .btn-primary {
+            background: var(--accent-pink);
+            color: #000;
+            border-color: var(--accent-pink);
+            font-weight: 600;
+        }
+        .btn-primary:hover {
+            background: #ffc9c2;
+            border-color: #ffc9c2;
+        }
+
         footer {
             margin-top: 4rem;
             padding-top: 1rem;
@@ -337,9 +384,19 @@
         {% if page == 'listing' %}
         {% if items %}
         <div class="listing-toolbar">
-            <a href="/api/download-zip/{{ path }}" class="btn" data-turbo="false" title="Download everything in this folder as a .zip">
-                Download all (.zip)
-            </a>
+            <button id="download-zip-btn" class="btn" data-path="{{ path }}" title="Download everything in this folder as a .zip">
+                <svg id="zip-spinner" class="spin-anim" style="display: none; width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="2" x2="12" y2="6"></line>
+                    <line x1="12" y1="18" x2="12" y2="22"></line>
+                    <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+                    <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+                    <line x1="2" y1="12" x2="6" y2="12"></line>
+                    <line x1="18" y1="12" x2="22" y2="12"></line>
+                    <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+                    <line x1="16.24" y1="4.93" x2="19.07" y2="7.76"></line>
+                </svg>
+                <span id="zip-btn-text">Download all (.zip)</span>
+            </button>
         </div>
         {% endif %}
         <div class="list-container">
@@ -552,6 +609,17 @@
         </script>
         {% endif %}
 
+        <div id="zip-modal-overlay" class="modal-overlay" style="display: none;">
+            <div class="modal">
+                <h3>Confirm Download</h3>
+                <p id="zip-modal-text" style="color: var(--text-main); font-size: 0.95rem;"></p>
+                <div class="modal-actions">
+                    <button class="btn" id="zip-modal-cancel">Cancel</button>
+                    <a href="#" class="btn btn-primary" id="zip-modal-confirm" data-turbo="false">Download (.zip)</a>
+                </div>
+            </div>
+        </div>
+
         <footer>
             <div>
                 {% if page == 'listing' and items %}
@@ -570,6 +638,57 @@
     </div>
 
     <script>
+        const zipBtn = document.getElementById('download-zip-btn');
+        const zipModalOverlay = document.getElementById('zip-modal-overlay');
+        const zipModalCancel = document.getElementById('zip-modal-cancel');
+        const zipModalConfirm = document.getElementById('zip-modal-confirm');
+        const zipSpinner = document.getElementById('zip-spinner');
+        const zipBtnText = document.getElementById('zip-btn-text');
+
+        if (zipBtn) {
+            zipBtn.addEventListener('click', async () => {
+                const path = zipBtn.getAttribute('data-path') || '';
+                zipBtn.disabled = true;
+                zipSpinner.style.display = 'block';
+                zipBtnText.textContent = 'Calculating...';
+
+                try {
+                    const res = await fetch('/api/zip-stats/' + path);
+                    if (!res.ok) {
+                        const err = await res.json();
+                        throw new Error(err.detail || 'Failed to get directory stats');
+                    }
+                    const data = await res.json();
+                    
+                    const folderName = path ? path.split('/').pop() : 'root';
+                    document.getElementById('zip-modal-text').innerHTML = 
+                        `Are you sure you want to download <strong>${folderName}</strong>?<br><br>` +
+                        `This will package <strong>${data.file_count} file(s)</strong> totaling <strong>${data.size_str}</strong> into a .zip.`;
+                    
+                    zipModalConfirm.href = '/api/download-zip/' + path;
+                    zipModalOverlay.style.display = 'flex';
+                } catch (err) {
+                    alert('Could not prepare download: ' + err.message);
+                } finally {
+                    zipBtn.disabled = false;
+                    zipSpinner.style.display = 'none';
+                    zipBtnText.textContent = 'Download all (.zip)';
+                }
+            });
+        }
+
+        if (zipModalCancel) {
+            zipModalCancel.addEventListener('click', () => {
+                zipModalOverlay.style.display = 'none';
+            });
+        }
+        
+        if (zipModalConfirm) {
+            zipModalConfirm.addEventListener('click', () => {
+                zipModalOverlay.style.display = 'none';
+            });
+        }
+
         function copyToClipboard(text, btn) {
             navigator.clipboard.writeText(text).then(() => {
                 if (!btn) return;
@@ -609,10 +728,8 @@
                 window.Turbo.setProgressBarDelay(0);
             }
         }, { once: true });
-        
-        document.addEventListener('turbo:visit', () => document.body.classList.add('turbo-loading'));
+        document.addEventListener('turbo:click', () => document.body.classList.add('turbo-loading'));
         document.addEventListener('turbo:submit-start', () => document.body.classList.add('turbo-loading'));
-        
         document.addEventListener('turbo:before-render', () => document.body.classList.remove('turbo-loading'));
         document.addEventListener('turbo:render', () => document.body.classList.remove('turbo-loading'));
         document.addEventListener('turbo:load', () => document.body.classList.remove('turbo-loading'));
