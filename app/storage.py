@@ -40,6 +40,11 @@ async def is_file(path: str) -> bool:
         _set_cache(cache_key, result)
         return result
 
+def _fetch_tree(path: str, expand_info: bool):
+    return list(api.list_repo_tree(
+        repo_id=HF_REPO_ID, path_in_repo=path, repo_type="dataset", expand=expand_info
+    ))
+
 def list_directory(path: str):
     """Returns list of dicts for items in directory, sorted folders first."""
     cache_key = f"list_dir_{path}"
@@ -47,12 +52,21 @@ def list_directory(path: str):
     if cached is not None:
         return cached
 
+    have_dates = True
     try:
-        items = list(api.list_repo_tree(
-            repo_id=HF_REPO_ID, path_in_repo=path, repo_type="dataset", expand_info=True
-        ))
-    except Exception:
-        return []
+        items = _fetch_tree(path, expand_info=True)
+    except Exception as e:
+        # Some huggingface_hub versions / repos don't play nicely with
+        # expand_info. Don't let that take down the whole listing — fall
+        # back to a plain (dateless) listing instead of silently showing
+        # an empty folder.
+        print(f"[storage] list_repo_tree(expand_info=True) failed for {path!r}: {e}")
+        have_dates = False
+        try:
+            items = _fetch_tree(path, expand_info=False)
+        except Exception as e2:
+            print(f"[storage] list_repo_tree fallback also failed for {path!r}: {e2}")
+            return []
     
     files_and_folders = []
     for item in items:
@@ -69,13 +83,12 @@ def list_directory(path: str):
             else:
                 size_str = f"{size / (1024 * 1024):.1f} MB"
 
-        # last_commit is only populated when expand_info=True is passed to
-        # list_repo_tree; we fetch it lazily below only if available, so this
-        # degrades gracefully to "-" rather than failing the whole listing.
-        last_modified = getattr(item, "last_commit", None)
+        # last_commit is only populated when expand_info=True succeeded;
+        # otherwise this just stays "-" rather than breaking the listing.
         modified_str = "-"
-        if last_modified is not None:
-            date = getattr(last_modified, "date", None)
+        if have_dates:
+            last_commit = getattr(item, "last_commit", None)
+            date = getattr(last_commit, "date", None) if last_commit else None
             if date is not None:
                 modified_str = date.strftime("%Y-%m-%d")
 
