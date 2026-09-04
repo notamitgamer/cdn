@@ -3,8 +3,9 @@ import shutil
 import uuid
 import mimetypes
 import httpx
+from pathlib import Path
 from fastapi import FastAPI, Request, File, UploadFile, Depends, HTTPException
-from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
 from .storage import is_file, list_directory, upload_temp_file, HF_REPO_ID
@@ -13,6 +14,42 @@ from .auth import verify_token
 app = FastAPI()
 
 templates = Jinja2Templates(directory="app/templates")
+
+STATIC_DIR = Path(__file__).parent / "static"
+
+# manifest.json and the service worker must always be fetched fresh —
+# the app can change at any time and we never want a stale PWA shell
+# or a stale install prompt. Icons are safe to cache normally.
+_NO_STORE_FILES = {"manifest.json", "sw.js"}
+
+@app.get("/static/{filename}")
+async def static_no_cache_root(filename: str):
+    if filename not in _NO_STORE_FILES:
+        raise HTTPException(status_code=404)
+    file_path = STATIC_DIR / filename
+    if not file_path.is_file():
+        raise HTTPException(status_code=404)
+    return FileResponse(
+        file_path,
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"},
+    )
+
+@app.get("/static/icons/{filename}")
+async def static_icons(filename: str):
+    file_path = STATIC_DIR / "icons" / filename
+    if not file_path.is_file():
+        raise HTTPException(status_code=404)
+    return FileResponse(
+        file_path,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+@app.get("/favicon.ico")
+async def favicon():
+    return FileResponse(
+        STATIC_DIR / "favicon.ico",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 CDN_BASE_URL = os.getenv("CDN_BASE_URL", "https://cdn-zt7p.onrender.com")
 RAW_DOMAIN = os.getenv("RAW_DOMAIN", "raw.cdn.amit.is-a.dev")

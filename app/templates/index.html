@@ -4,7 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CDN | {{ page | capitalize }}</title>
-    
+    <meta name="description" content="Personal CDN for browsing, uploading, and linking hosted assets.">
+
+    <!-- Favicon -->
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16x16.png">
+    <link rel="icon" type="image/svg+xml" href="/static/icons/logo.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png">
+
+    <!-- PWA manifest (fetched with no-store, see /static/manifest.json route) -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#050505">
+    <meta name="color-scheme" content="dark">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CDN">
+
+    <!-- Social preview -->
+    <meta property="og:title" content="CDN | {{ page | capitalize }}">
+    <meta property="og:description" content="Personal CDN for browsing, uploading, and linking hosted assets.">
+    <meta property="og:image" content="/static/icons/og-logo.png">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+
     <!-- ADD THIS: Turbo to make the site a Single Page App -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es2017-esm.js"></script>
     
@@ -473,6 +496,18 @@
                 // visual feedback could go here
             }).catch(err => {
                 console.error('failed to copy: ', err);
+            });
+        }
+
+        // Registers a service worker so the site is installable as a PWA.
+        // The worker (see /static/sw.js) does NOT cache anything — it only
+        // passes requests straight through to the network, since this CDN's
+        // listings and files can change at any time and must never be stale.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/sw.js').catch(err => {
+                    console.error('service worker registration failed:', err);
+                });
             });
         }
     </script>
