@@ -26,7 +26,6 @@
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary">
 
-    <!-- Turbo for fast navigation -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es2017-esm.js"></script>
     
     <style>
@@ -241,7 +240,6 @@
         .container {
             transition: opacity 0.15s ease;
         }
-        /* Applied only during active navigations to dim the screen */
         body.turbo-loading .container {
             opacity: 0.5;
             pointer-events: none;
@@ -352,7 +350,12 @@
                 <div class="list-item" data-name="..">
                     <div class="item-name">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 1 1 0 8h-1"/></svg>
-                        <a href="../">..</a>
+                        {% set parent_path = '/' %}
+                        {% set path_parts = path.split('/') %}
+                        {% if path_parts|length > 1 %}
+                            {% set parent_path = '/' + path_parts[:-1]|join('/') %}
+                        {% endif %}
+                        <a href="{{ parent_path }}">..</a>
                     </div>
                 </div>
                 {% endif %}
