@@ -614,8 +614,18 @@
                 <h3>Confirm Download</h3>
                 <p id="zip-modal-text" style="color: var(--text-main); font-size: 0.95rem;"></p>
                 <div class="modal-actions">
-                    <button class="btn" id="zip-modal-cancel">Cancel</button>
+                    <button type="button" class="btn" id="zip-modal-cancel">Cancel</button>
                     <a href="#" class="btn btn-primary" id="zip-modal-confirm" data-turbo="false">Download (.zip)</a>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-modal-overlay" class="modal-overlay" style="display: none;">
+            <div class="modal">
+                <h3 style="color: var(--danger); margin-top: 0; margin-bottom: 1rem; font-size: 1.2rem; font-weight: 500;">Notice</h3>
+                <p id="error-modal-text" style="color: var(--text-main); font-size: 0.95rem; margin-bottom: 1.5rem;"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn" id="error-modal-close">Close</button>
                 </div>
             </div>
         </div>
@@ -638,57 +648,6 @@
     </div>
 
     <script>
-        const zipBtn = document.getElementById('download-zip-btn');
-        const zipModalOverlay = document.getElementById('zip-modal-overlay');
-        const zipModalCancel = document.getElementById('zip-modal-cancel');
-        const zipModalConfirm = document.getElementById('zip-modal-confirm');
-        const zipSpinner = document.getElementById('zip-spinner');
-        const zipBtnText = document.getElementById('zip-btn-text');
-
-        if (zipBtn) {
-            zipBtn.addEventListener('click', async () => {
-                const path = zipBtn.getAttribute('data-path') || '';
-                zipBtn.disabled = true;
-                zipSpinner.style.display = 'block';
-                zipBtnText.textContent = 'Calculating...';
-
-                try {
-                    const res = await fetch('/api/zip-stats/' + path);
-                    if (!res.ok) {
-                        const err = await res.json();
-                        throw new Error(err.detail || 'Failed to get directory stats');
-                    }
-                    const data = await res.json();
-                    
-                    const folderName = path ? path.split('/').pop() : 'root';
-                    document.getElementById('zip-modal-text').innerHTML = 
-                        `Are you sure you want to download <strong>${folderName}</strong>?<br><br>` +
-                        `This will package <strong>${data.file_count} file(s)</strong> totaling <strong>${data.size_str}</strong> into a .zip.`;
-                    
-                    zipModalConfirm.href = '/api/download-zip/' + path;
-                    zipModalOverlay.style.display = 'flex';
-                } catch (err) {
-                    alert('Could not prepare download: ' + err.message);
-                } finally {
-                    zipBtn.disabled = false;
-                    zipSpinner.style.display = 'none';
-                    zipBtnText.textContent = 'Download all (.zip)';
-                }
-            });
-        }
-
-        if (zipModalCancel) {
-            zipModalCancel.addEventListener('click', () => {
-                zipModalOverlay.style.display = 'none';
-            });
-        }
-        
-        if (zipModalConfirm) {
-            zipModalConfirm.addEventListener('click', () => {
-                zipModalOverlay.style.display = 'none';
-            });
-        }
-
         function copyToClipboard(text, btn) {
             navigator.clipboard.writeText(text).then(() => {
                 if (!btn) return;
@@ -715,35 +674,102 @@
             });
         }
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/sw.js').catch(err => {
-                    console.error('service worker registration failed:', err);
+        // We wrap global listeners in this check so Turbo doesn't duplicate them on every page render
+        if (!window.__CDN_App_Initialized) {
+            window.__CDN_App_Initialized = true;
+
+            // Event delegation guarantees UI buttons work even after Turbo replaces DOM elements
+            document.addEventListener('click', async (e) => {
+                
+                // --- ZIP Button Logic ---
+                const zipBtn = e.target.closest('#download-zip-btn');
+                if (zipBtn) {
+                    e.preventDefault();
+                    if (zipBtn.disabled) return;
+
+                    const path = zipBtn.getAttribute('data-path') || '';
+                    const zipSpinner = document.getElementById('zip-spinner');
+                    const zipBtnText = document.getElementById('zip-btn-text');
+                    const zipModalOverlay = document.getElementById('zip-modal-overlay');
+
+                    zipBtn.disabled = true;
+                    if (zipSpinner) zipSpinner.style.display = 'block';
+                    if (zipBtnText) zipBtnText.textContent = 'Calculating...';
+
+                    try {
+                        const res = await fetch('/api/zip-stats/' + path);
+                        const data = await res.json();
+                        
+                        if (!res.ok) {
+                            throw new Error(data.detail || 'Failed to get directory stats');
+                        }
+                        
+                        const folderName = path ? path.split('/').pop() : 'root';
+                        document.getElementById('zip-modal-text').innerHTML = 
+                            `Are you sure you want to download <strong>${folderName}</strong>?<br><br>` +
+                            `This will package <strong>${data.file_count} file(s)</strong> totaling <strong>${data.size_str}</strong> into a .zip.`;
+                        
+                        document.getElementById('zip-modal-confirm').href = '/api/download-zip/' + path;
+                        zipModalOverlay.style.display = 'flex';
+                    } catch (err) {
+                        const errorModalOverlay = document.getElementById('error-modal-overlay');
+                        if (errorModalOverlay) {
+                            document.getElementById('error-modal-text').textContent = err.message;
+                            errorModalOverlay.style.display = 'flex';
+                        } else {
+                            alert(err.message); // Fallback
+                        }
+                    } finally {
+                        zipBtn.disabled = false;
+                        if (zipSpinner) zipSpinner.style.display = 'none';
+                        if (zipBtnText) zipBtnText.textContent = 'Download all (.zip)';
+                    }
+                }
+
+                // --- Modal Close/Cancel Logic ---
+                if (e.target.closest('#zip-modal-cancel') || e.target.closest('#zip-modal-confirm')) {
+                    const zipOverlay = document.getElementById('zip-modal-overlay');
+                    if (zipOverlay) zipOverlay.style.display = 'none';
+                }
+
+                if (e.target.closest('#error-modal-close')) {
+                    const errOverlay = document.getElementById('error-modal-overlay');
+                    if (errOverlay) errOverlay.style.display = 'none';
+                }
+            });
+
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/static/sw.js').catch(err => {
+                        console.error('service worker registration failed:', err);
+                    });
                 });
+            }
+
+            // Turbo loading state management
+            document.addEventListener('turbo:load', () => {
+                if (window.Turbo && window.Turbo.setProgressBarDelay) {
+                    window.Turbo.setProgressBarDelay(0);
+                }
+            }, { once: true });
+            document.addEventListener('turbo:visit', () => document.body.classList.add('turbo-loading'));
+            document.addEventListener('turbo:submit-start', () => document.body.classList.add('turbo-loading'));
+            document.addEventListener('turbo:before-render', () => document.body.classList.remove('turbo-loading'));
+            document.addEventListener('turbo:render', () => document.body.classList.remove('turbo-loading'));
+            document.addEventListener('turbo:load', () => document.body.classList.remove('turbo-loading'));
+
+            // Filter quick focus keybind
+            document.addEventListener('keydown', (e) => {
+                if (e.key !== '/') return;
+                const tag = (document.activeElement && document.activeElement.tagName) || '';
+                if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+                const filterInput = document.getElementById('filter-input');
+                if (filterInput) {
+                    e.preventDefault();
+                    filterInput.focus();
+                }
             });
         }
-
-        document.addEventListener('turbo:load', () => {
-            if (window.Turbo && window.Turbo.setProgressBarDelay) {
-                window.Turbo.setProgressBarDelay(0);
-            }
-        }, { once: true });
-        document.addEventListener('turbo:click', () => document.body.classList.add('turbo-loading'));
-        document.addEventListener('turbo:submit-start', () => document.body.classList.add('turbo-loading'));
-        document.addEventListener('turbo:before-render', () => document.body.classList.remove('turbo-loading'));
-        document.addEventListener('turbo:render', () => document.body.classList.remove('turbo-loading'));
-        document.addEventListener('turbo:load', () => document.body.classList.remove('turbo-loading'));
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key !== '/') return;
-            const tag = (document.activeElement && document.activeElement.tagName) || '';
-            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-            const filterInput = document.getElementById('filter-input');
-            if (filterInput) {
-                e.preventDefault();
-                filterInput.focus();
-            }
-        });
     </script>
 </body>
 </html>
