@@ -18,9 +18,6 @@ templates = Jinja2Templates(directory="app/templates")
 
 STATIC_DIR = Path(__file__).parent / "static"
 
-# manifest.json and the service worker must always be fetched fresh —
-# the app can change at any time and we never want a stale PWA shell
-# or a stale install prompt. Icons are safe to cache normally.
 _NO_STORE_FILES = {"manifest.json", "sw.js"}
 
 @app.get("/static/{filename}")
@@ -58,9 +55,6 @@ RAW_BASE_URL = os.getenv("RAW_BASE_URL", f"https://{RAW_DOMAIN}")
 RAW_PREFIX = "raw/"
 
 def render_context(extra: dict) -> dict:
-    """Merges page-specific context with repo-wide file count / size stats
-    (shown in the footer on every page). repo_stats() is cached, so this
-    doesn't add a fresh full-repo scan on every request."""
     stats = repo_stats()
     ctx = dict(extra)
     ctx["repo_file_count"] = stats["file_count"] if stats else None
@@ -69,10 +63,8 @@ def render_context(extra: dict) -> dict:
 
 @app.exception_handler(404)
 async def not_found_handler(request: Request, exc: HTTPException):
-    # Keep the raw subdomain returning plain text errors
     if request.url.hostname == RAW_DOMAIN:
         return PlainTextResponse("404: File Not Found", status_code=404)
-    # Render UI 404 page for the main CDN domain
     return templates.TemplateResponse(request, "index.html", render_context({"page": "404"}), status_code=404)
 
 async def stream_raw(path: str):
@@ -88,17 +80,14 @@ async def stream_raw(path: str):
     filename = path.split("/")[-1].lower()
     guessed_type, _ = mimetypes.guess_type(filename)
     
-    # Allow media and PDFs to render in-browser securely
     if guessed_type and (
         guessed_type.startswith("image/") or 
         guessed_type.startswith("video/") or 
-        guessed_type.startswith("audio/") or
+        guessed_type.startswith("audio/") or 
         guessed_type == "application/pdf"
     ):
         content_type = guessed_type
     else:
-        # Force all other files (code, HTML, JSON, unknown) to plain text
-        # This prevents XSS attacks on the raw domain
         content_type = "text/plain; charset=utf-8"
 
     headers = {
@@ -187,9 +176,7 @@ async def download_zip(path: str):
                 hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{f['path']}"
                 r = await client.get(hf_url)
                 if r.status_code != 200:
-                    continue  # skip files that fail rather than aborting the whole zip
-                # arcname: path relative to the requested folder, so the zip
-                # doesn't contain the full repo path
+                    continue
                 arcname = f["path"][prefix_len:] if prefix_len else f["path"]
                 zf.writestr(arcname, r.content)
 
@@ -210,13 +197,11 @@ async def ping():
 async def serve(request: Request, path: str):
     clean_path = path.strip("/")
 
-    # 1. Intercept requests coming to the raw subdomain
     if request.url.hostname == RAW_DOMAIN:
         if not clean_path:
             return HTMLResponse("Specify a file path.", status_code=200)
         return await stream_raw(clean_path)
 
-    # 2. Keep old /raw/ prefix working on main domain by redirecting to subdomain
     if clean_path == RAW_PREFIX.rstrip("/") or clean_path.startswith(RAW_PREFIX):
         raw_path = clean_path[len(RAW_PREFIX):]
         if not raw_path:
