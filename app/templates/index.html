@@ -277,11 +277,13 @@
 
         .listing-toolbar {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
             margin-bottom: 0.75rem;
         }
 
-        /* Spinner Animations */
         @keyframes spin {
             100% { transform: rotate(360deg); }
         }
@@ -289,7 +291,6 @@
             animation: spin 1s linear infinite;
         }
 
-        /* Modal styling */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.75);
@@ -384,6 +385,22 @@
         {% if page == 'listing' %}
         {% if items %}
         <div class="listing-toolbar">
+            <div style="color: var(--text-dim); font-size: 0.9rem;">
+                {% set visible_items = items | rejectattr("name", "equalto", ".gitattributes") | list %}
+                {% set file_count = visible_items | rejectattr("is_dir") | list | length %}
+                {% set dir_count = visible_items | selectattr("is_dir") | list | length %}
+                
+                {% if dir_count > 0 %}
+                    {{ dir_count }} folder{{ 's' if dir_count != 1 else '' }}
+                {% endif %}
+                {% if dir_count > 0 and file_count > 0 %} &amp; {% endif %}
+                {% if file_count > 0 %}
+                    {{ file_count }} file{{ 's' if file_count != 1 else '' }}
+                {% endif %}
+                {% if dir_count == 0 and file_count == 0 %}
+                    0 items
+                {% endif %}
+            </div>
             <button id="download-zip-btn" class="btn" data-path="{{ path }}" title="Download everything in this folder as a .zip">
                 <svg id="zip-spinner" class="spin-anim" style="display: none; width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="2" x2="12" y2="6"></line>
@@ -635,25 +652,7 @@
 
         <footer>
             <div>
-                {% if page == 'listing' and items %}
-                    {% set visible_items = items | rejectattr("name", "equalto", ".gitattributes") | list %}
-                    {% set file_count = visible_items | rejectattr("is_dir") | list | length %}
-                    {% set dir_count = visible_items | selectattr("is_dir") | list | length %}
-                    
-                    {% if dir_count > 0 %}
-                        {{ dir_count }} folder{{ 's' if dir_count != 1 else '' }}
-                    {% endif %}
-                    {% if dir_count > 0 and file_count > 0 %} &amp; {% endif %}
-                    {% if file_count > 0 %}
-                        {{ file_count }} file{{ 's' if file_count != 1 else '' }}
-                    {% endif %}
-                    {% if dir_count == 0 and file_count == 0 %}
-                        0 items
-                    {% endif %}
-                {% else %}
-                    cdn
-                {% endif %}
-                · &copy; 2026 · assets may move without notice
+                cdn · &copy; 2026 · assets may move without notice
             </div>
             {% if repo_file_count is not none %}
             <div title="Across the whole repo">
@@ -690,14 +689,10 @@
             });
         }
 
-        // We wrap global listeners in this check so Turbo doesn't duplicate them on every page render
         if (!window.__CDN_App_Initialized) {
             window.__CDN_App_Initialized = true;
 
-            // Event delegation guarantees UI buttons work even after Turbo replaces DOM elements
             document.addEventListener('click', async (e) => {
-                
-                // --- ZIP Button Logic ---
                 const zipBtn = e.target.closest('#download-zip-btn');
                 if (zipBtn) {
                     e.preventDefault();
@@ -733,7 +728,7 @@
                             document.getElementById('error-modal-text').textContent = err.message;
                             errorModalOverlay.style.display = 'flex';
                         } else {
-                            alert(err.message); // Fallback
+                            alert(err.message);
                         }
                     } finally {
                         zipBtn.disabled = false;
@@ -742,7 +737,6 @@
                     }
                 }
 
-                // --- Modal Close/Cancel Logic ---
                 if (e.target.closest('#zip-modal-cancel') || e.target.closest('#zip-modal-confirm')) {
                     const zipOverlay = document.getElementById('zip-modal-overlay');
                     if (zipOverlay) zipOverlay.style.display = 'none';
@@ -762,7 +756,6 @@
                 });
             }
 
-            // Turbo loading state management
             document.addEventListener('turbo:load', () => {
                 if (window.Turbo && window.Turbo.setProgressBarDelay) {
                     window.Turbo.setProgressBarDelay(0);
@@ -774,12 +767,11 @@
             document.addEventListener('turbo:render', () => document.body.classList.remove('turbo-loading'));
             document.addEventListener('turbo:load', () => document.body.classList.remove('turbo-loading'));
 
-            // Filter quick focus keybind
             document.addEventListener('keydown', (e) => {
                 if (e.key !== '/') return;
                 const tag = (document.activeElement && document.activeElement.tagName) || '';
                 if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-                const filterInput = document.getElementById('filter-input');
+                const filterInput = document.getElementById('filter-input');a
                 if (filterInput) {
                     e.preventDefault();
                     filterInput.focus();
