@@ -486,14 +486,14 @@
             if (filterInput) {
                 filterInput.addEventListener('input', (e) => {
                     const term = e.target.value.toLowerCase();
-                    fileList.forEach(item => {
-                        const name = item.getAttribute('data-name').toLowerCase();
-                        if (name === '..') return;
-                        item.style.display = name.includes(term) ? 'flex' : 'none';
-                    });
-                });
-            }
-        </script>
+                {% if not items %}
+                <div class="empty-state">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    <span>Empty directory</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
 
         {% elif page == 'file' %}
         <div class="list-container" style="padding: 3rem 1.5rem; text-align: center;">
@@ -709,6 +709,18 @@
 
         if (!window.__CDN_App_Initialized) {
             window.__CDN_App_Initialized = true;
+
+            document.addEventListener('input', (e) => {
+                if (e.target.id === 'filter-input') {
+                    const term = e.target.value.toLowerCase();
+                    const fileList = document.querySelectorAll('#file-list .list-item[data-name]');
+                    fileList.forEach(item => {
+                        const name = item.getAttribute('data-name').toLowerCase();
+                        if (name === '..') return;
+                        item.style.display = name.includes(term) ? 'flex' : 'none';
+                    });
+                }
+            });
 
             document.addEventListener('click', async (e) => {
                 const zipBtn = e.target.closest('#download-zip-btn');
