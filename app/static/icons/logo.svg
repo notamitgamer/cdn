@@ -1,0 +1,20 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#050505"/>
+  <rect x="30" y="30" width="452" height="452" rx="92" fill="none" stroke="#21262d" stroke-width="2"/>
+
+  <!-- Terminal caret / bracket mark echoing the monospace theme -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M180 150 L110 256 L180 362" stroke="#5eead4" stroke-width="34"/>
+    <path d="M332 150 L402 256 L332 362" stroke="#fca5a5" stroke-width="34"/>
+  </g>
+
+  <!-- center slash / cursor, echoing directory listing dash -->
+  <rect x="243" y="150" width="26" height="212" rx="8" fill="#ffffff" transform="rotate(14 256 256)"/>
+
+  <!-- three-color accent dash at the bottom, matches site's .top-accent gradient -->
+  <g>
+    <rect x="176" y="410" width="52" height="10" rx="5" fill="#5eead4"/>
+    <rect x="230" y="410" width="52" height="10" rx="5" fill="#fca5a5"/>
+    <rect x="284" y="410" width="52" height="10" rx="5" fill="#ffffff"/>
+  </g>
+</svg>
