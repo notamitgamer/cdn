@@ -6,25 +6,27 @@
     <title>CDN | {{ page | capitalize }}</title>
     <meta name="description" content="Personal CDN for browsing, uploading, and linking hosted assets.">
 
+    <!-- Favicons & Manifest -->
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16x16.png">
     <link rel="icon" type="image/svg+xml" href="/static/icons/logo.svg">
     <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png">
-
     <link rel="manifest" href="/static/manifest.json">
+    
+    <!-- Meta Theme & Social -->
     <meta name="theme-color" content="#050505">
     <meta name="color-scheme" content="dark">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CDN">
-
     <meta property="og:title" content="CDN | {{ page | capitalize }}">
     <meta property="og:description" content="Personal CDN for browsing, uploading, and linking hosted assets.">
     <meta property="og:image" content="/static/icons/og-logo.png">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary">
 
+    <!-- Turbo for fast navigation -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es2017-esm.js"></script>
     
     <style>
@@ -41,6 +43,7 @@
         * { box-sizing: border-box; }
         * { -webkit-tap-highlight-color: transparent; }
         
+        /* Base typography and body layout */
         body {
             font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
             background: var(--bg);
@@ -238,6 +241,7 @@
         .container {
             transition: opacity 0.15s ease;
         }
+        /* Applied only during active navigations to dim the screen */
         body.turbo-loading .container {
             opacity: 0.5;
             pointer-events: none;
@@ -602,10 +606,13 @@
                 window.Turbo.setProgressBarDelay(0);
             }
         }, { once: true });
-        document.addEventListener('turbo:click', () => document.body.classList.add('turbo-loading'));
-        document.addEventListener('turbo:before-fetch-request', () => document.body.classList.add('turbo-loading'));
+        
+        document.addEventListener('turbo:visit', () => document.body.classList.add('turbo-loading'));
+        document.addEventListener('turbo:submit-start', () => document.body.classList.add('turbo-loading'));
+        
         document.addEventListener('turbo:before-render', () => document.body.classList.remove('turbo-loading'));
         document.addEventListener('turbo:render', () => document.body.classList.remove('turbo-loading'));
+        document.addEventListener('turbo:load', () => document.body.classList.remove('turbo-loading'));
 
         document.addEventListener('keydown', (e) => {
             if (e.key !== '/') return;
