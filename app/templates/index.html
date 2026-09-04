@@ -6,14 +6,12 @@
     <title>CDN | {{ page | capitalize }}</title>
     <meta name="description" content="Personal CDN for browsing, uploading, and linking hosted assets.">
 
-    <!-- Favicon -->
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/static/icons/favicon-16x16.png">
     <link rel="icon" type="image/svg+xml" href="/static/icons/logo.svg">
     <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png">
 
-    <!-- PWA manifest (fetched with no-store, see /static/manifest.json route) -->
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#050505">
     <meta name="color-scheme" content="dark">
@@ -21,14 +19,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CDN">
 
-    <!-- Social preview -->
     <meta property="og:title" content="CDN | {{ page | capitalize }}">
     <meta property="og:description" content="Personal CDN for browsing, uploading, and linking hosted assets.">
     <meta property="og:image" content="/static/icons/og-logo.png">
     <meta property="og:type" content="website">
     <meta name="twitter:card" content="summary">
 
-    <!-- ADD THIS: Turbo to make the site a Single Page App -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8.0.4/dist/turbo.es2017-esm.js"></script>
     
     <style>
@@ -185,7 +181,7 @@
             transition: color 0.15s;
             display: flex;
             align-items: center;
-            padding: 0.25rem; /* larger tap target on mobile */
+            padding: 0.25rem;
         }
         .download-icon:hover {
             color: var(--accent-pink);
@@ -234,14 +230,11 @@
         .file-row.done { border-color: #2ea043; }
         .file-row.error { border-color: var(--danger); }
 
-        /* ADD THIS: Style the Turbo progress bar to match your theme */
         .turbo-progress-bar {
             height: 3px;
             background-color: var(--accent-pink);
         }
 
-        /* Dim + slightly blur the content while Turbo is fetching the next
-           page, so navigation doesn't feel like nothing happened. */
         .container {
             transition: opacity 0.15s ease;
         }
@@ -376,7 +369,6 @@
                         <a href="/{{ item.path }}">{{ item.name }}/</a>
                         {% else %}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-                        <!-- ADD data-turbo="false" so clicking raw files doesn't trigger the SPA router -->
                         <a href="{{ raw_base_url }}/{{ item.path }}" data-turbo="false">{{ item.name }}</a>
                         {% endif %}
                     </div>
@@ -384,7 +376,6 @@
                         {% if not item.is_dir %}
                         <span class="modified-label">{{ item.modified_str }}</span>
                         <span>{{ item.size_str }}</span>
-                        <!-- ADD data-turbo="false" to download links -->
                         <a href="/api/download/{{ item.path }}" class="download-icon" title="Download" data-turbo="false">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
                         </a>
@@ -425,7 +416,6 @@
             <p style="color: var(--text-dim); margin-bottom: 2rem; font-size: 0.85rem; word-break: break-all;">{{ path }}</p>
             
             <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; padding: 0 0.5rem;">
-                <!-- ADD data-turbo="false" to these action buttons -->
                 <a href="/api/download/{{ path }}" class="btn" data-turbo="false">Download</a>
                 <a href="{{ raw_base_url }}/{{ path }}" class="btn" data-turbo="false">Open Raw</a>
                 <button onclick="copyToClipboard(window.location.origin + '/' + '{{ path }}', this)" class="btn">Copy Link</button>
@@ -461,10 +451,7 @@
             const results = document.getElementById('results');
             const errorBox = document.getElementById('error-box');
 
-            // Client-side guardrail only — the real limit still needs to be
-            // enforced server-side; this just avoids a slow/failed upload
-            // and gives the user immediate feedback instead.
-            const MAX_FILE_SIZE_BYTES = 200 * 1024 * 1024; // 200 MB
+            const MAX_FILE_SIZE_BYTES = 200 * 1024 * 1024;
 
             dropzone.addEventListener('click', () => fileInput.click());
             dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
@@ -540,7 +527,6 @@
                                 const row = rows[item.filename];
                                 if (!row) return;
                                 row.classList.add('done');
-                                // Updated to grab the full raw_url since it now points to the subdomain
                                 const rawPath = item.raw_url;
                                 row.innerHTML = `
                                     <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:1rem; color: #2ea043;">${item.filename}</div>
@@ -612,10 +598,6 @@
             });
         }
 
-        // Registers a service worker so the site is installable as a PWA.
-        // The worker (see /static/sw.js) does NOT cache anything — it only
-        // passes requests straight through to the network, since this CDN's
-        // listings and files can change at any time and must never be stale.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/sw.js').catch(err => {
@@ -624,9 +606,6 @@
             });
         }
 
-        // Dim the page immediately while Turbo fetches the next page, and
-        // make the built-in Turbo progress bar show up without its default
-        // delay, so navigation always gives some visual feedback.
         document.addEventListener('turbo:load', () => {
             if (window.Turbo && window.Turbo.setProgressBarDelay) {
                 window.Turbo.setProgressBarDelay(0);
@@ -637,8 +616,6 @@
         document.addEventListener('turbo:before-render', () => document.body.classList.remove('turbo-loading'));
         document.addEventListener('turbo:render', () => document.body.classList.remove('turbo-loading'));
 
-        // Press "/" anywhere (outside of a text field) to jump into the
-        // filter box on listing pages.
         document.addEventListener('keydown', (e) => {
             if (e.key !== '/') return;
             const tag = (document.activeElement && document.activeElement.tagName) || '';
