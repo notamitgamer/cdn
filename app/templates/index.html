@@ -577,6 +577,11 @@
                 {% endif %}
                 · &copy; 2026 · assets may move without notice
             </div>
+            {% if repo_file_count is not none %}
+            <div title="Across the whole repo">
+                {{ repo_file_count }} file{{ '' if repo_file_count == 1 else 's' }} · {{ repo_size_str }} total
+            </div>
+            {% endif %}
         </footer>
     </div>
 

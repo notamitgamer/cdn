@@ -74,14 +74,7 @@ def list_directory(path: str):
         is_dir = not hasattr(item, "size")
         size = getattr(item, "size", 0)
         
-        size_str = "-"
-        if not is_dir and size is not None:
-            if size < 1024:
-                size_str = f"{size} B"
-            elif size < 1024 * 1024:
-                size_str = f"{size / 1024:.1f} KB"
-            else:
-                size_str = f"{size / (1024 * 1024):.1f} MB"
+        size_str = format_size(size) if not is_dir else "-"
 
         # last_commit is only populated when expand_info=True succeeded;
         # otherwise this just stays "-" rather than breaking the listing.
@@ -136,6 +129,56 @@ def list_files_recursive(path: str):
                     f"{ZIP_MAX_TOTAL_BYTES // (1024 * 1024)} MB)."
                 )
     return files
+
+def format_size(size_bytes) -> str:
+    """
+    Human-readable size with proper unit escalation: bytes stay whole,
+    KB/MB/GB/TB get 2 decimals, and it keeps dividing by 1024 as long as
+    the value would round up to the next unit (so 1024MB shows as 1.00GB,
+    not 1024.00MB).
+    """
+    if size_bytes is None:
+        return "-"
+    size = float(size_bytes)
+    units = ["B", "KB", "MB", "GB", "TB"]
+    idx = 0
+    while size >= 1024 and idx < len(units) - 1:
+        size /= 1024
+        idx += 1
+    if idx == 0:
+        return f"{int(size)} {units[idx]}"
+    return f"{size:.2f} {units[idx]}"
+
+# Repo-wide stats are more expensive to compute (full recursive tree scan)
+# than a single-folder listing, so they get their own longer-lived cache
+# entry rather than reusing the 60s per-folder TTL.
+REPO_STATS_CACHE_TTL = 300  # 5 minutes
+
+def repo_stats():
+    """Returns {'file_count': int, 'size_str': str} for the whole repo, cached."""
+    cache_key = "repo_stats"
+    now = time.time()
+    if cache_key in _cache and _cache[cache_key][0] > now:
+        return _cache[cache_key][1]
+
+    try:
+        items = list(api.list_repo_tree(
+            repo_id=HF_REPO_ID, path_in_repo="", repo_type="dataset", recursive=True
+        ))
+    except Exception as e:
+        print(f"[storage] repo_stats failed: {e}")
+        return None
+
+    file_count = 0
+    total_size = 0
+    for item in items:
+        if hasattr(item, "size"):  # files only, skip folder entries
+            file_count += 1
+            total_size += getattr(item, "size", 0) or 0
+
+    result = {"file_count": file_count, "size_str": format_size(total_size)}
+    _cache[cache_key] = (now + REPO_STATS_CACHE_TTL, result)
+    return result
 
 def upload_temp_file(temp_path: str, filename: str) -> str:
     """Uploads a local file to HF and returns the relative path."""
