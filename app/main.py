@@ -4,13 +4,13 @@ import uuid
 import mimetypes
 import io
 import zipfile
+import asyncio
 import httpx
 from pathlib import Path
 from fastapi import FastAPI, Request, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
-# Added format_size to the import list
 from .storage import is_file, list_directory, list_files_recursive, upload_temp_file, repo_stats, HF_REPO_ID, format_size
 
 app = FastAPI()
@@ -68,6 +68,13 @@ async def not_found_handler(request: Request, exc: HTTPException):
         return PlainTextResponse("404: File Not Found", status_code=404)
     return templates.TemplateResponse(request, "index.html", render_context({"page": "404"}), status_code=404)
 
+async def _proxy_stream(client: httpx.AsyncClient, r: httpx.Response):
+    try:
+        async for chunk in r.aiter_raw():
+            yield chunk
+    finally:
+        await client.aclose()
+
 async def stream_raw(path: str):
     hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
     client = httpx.AsyncClient(follow_redirects=True)
@@ -84,26 +91,17 @@ async def stream_raw(path: str):
         "X-Content-Type-Options": "nosniff"
     }
     
-    # Safely proxy critical headers (like Content-Encoding for gzip handling)
     for h in ["Content-Type", "Content-Encoding", "Content-Length", "Etag", "Accept-Ranges"]:
         if h in r.headers:
             headers[h] = r.headers[h]
-    
-    # Explicit override for text files in case HF serves as octet-stream
+
+    # Force text/plain for .md/.txt if HF served them as octet-stream
     filename = path.split("/")[-1].lower()
     if filename.endswith(".md") or filename.endswith(".txt"):
         if headers.get("Content-Type", "application/octet-stream") == "application/octet-stream":
             headers["Content-Type"] = "text/plain; charset=utf-8"
 
-    async def stream_generator():
-        try:
-            # Using aiter_raw guarantees we don't accidentally decompress the stream if it's encoded
-            async for chunk in r.aiter_raw():
-                yield chunk
-        finally:
-            await client.aclose()
-            
-    return StreamingResponse(stream_generator(), headers=headers)
+    return StreamingResponse(_proxy_stream(client, r), headers=headers)
 
 @app.get("/api/download/{path:path}")
 async def download_file(path: str):
@@ -126,15 +124,8 @@ async def download_file(path: str):
     for h in ["Content-Length", "Content-Encoding", "Etag"]:
         if h in r.headers:
             headers[h] = r.headers[h]
-    
-    async def stream_generator():
-        try:
-            async for chunk in r.aiter_raw():
-                yield chunk
-        finally:
-            await client.aclose()
-            
-    return StreamingResponse(stream_generator(), headers=headers)
+
+    return StreamingResponse(_proxy_stream(client, r), headers=headers)
 
 @app.post("/api/upload")
 async def handle_upload(files: list[UploadFile] = File(...)):
@@ -189,13 +180,20 @@ async def download_zip(path: str):
         raise HTTPException(status_code=404, detail="Folder is empty or not found")
 
     prefix_len = len(clean_path.rstrip("/")) + 1 if clean_path else 0
+    ZIP_FETCH_CONCURRENCY = 8
+    semaphore = asyncio.Semaphore(ZIP_FETCH_CONCURRENCY)
+
+    async def fetch(client: httpx.AsyncClient, f: dict):
+        hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{f['path']}"
+        async with semaphore:
+            r = await client.get(hf_url)
+        return f, r
 
     buffer = io.BytesIO()
     async with httpx.AsyncClient(follow_redirects=True) as client:
+        results = await asyncio.gather(*(fetch(client, f) for f in files))
         with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-            for f in files:
-                hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{f['path']}"
-                r = await client.get(hf_url)
+            for f, r in results:
                 if r.status_code != 200:
                     continue
                 arcname = f["path"][prefix_len:] if prefix_len else f["path"]
