@@ -179,6 +179,21 @@
             color: #e6edf3;
             font-weight: 500;
         }
+
+        .file-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 16px;
+            padding: 0 4px;
+            border-radius: 3px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            flex-shrink: 0;
+            line-height: 1;
+        }
         
         .item-meta {
             display: flex;
@@ -324,6 +339,11 @@
             align-items: center;
             gap: 0.5rem;
             flex-wrap: wrap;
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 10;
+            padding: 0.75rem 0;
         }
         .copy-path-btn {
             background: none;
@@ -523,12 +543,47 @@
                 {% for item in items %}
                 {% if item.name != '.gitattributes' %}
                 <div class="list-item" data-name="{{ item.name }}">
+                    {% set ext = item.name.rsplit('.', 1)[-1] | lower if '.' in item.name else '' %}
                     <div class="item-name">
                         {% if item.is_dir %}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                         <a href="/{{ item.path }}">{{ item.name }}/</a>
                         {% else %}
+                        {% if ext == 'md' %}<span class="file-badge" style="background:#083344;color:#5eead4;">MD</span>
+                        {% elif ext == 'js' %}<span class="file-badge" style="background:#3a3000;color:#f2cc60;">JS</span>
+                        {% elif ext == 'mjs' or ext == 'cjs' %}<span class="file-badge" style="background:#3a3000;color:#f2cc60;">JS</span>
+                        {% elif ext == 'ts' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">TS</span>
+                        {% elif ext == 'tsx' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">TSX</span>
+                        {% elif ext == 'jsx' %}<span class="file-badge" style="background:#3a3000;color:#f2cc60;">JSX</span>
+                        {% elif ext == 'py' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">PY</span>
+                        {% elif ext == 'html' or ext == 'htm' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">HTML</span>
+                        {% elif ext == 'css' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">CSS</span>
+                        {% elif ext == 'scss' or ext == 'sass' %}<span class="file-badge" style="background:#3d1730;color:#ff7edb;">SCSS</span>
+                        {% elif ext == 'json' %}<span class="file-badge" style="background:#2b2b2b;color:#c9d1d9;">{ }</span>
+                        {% elif ext == 'yml' or ext == 'yaml' %}<span class="file-badge" style="background:#3d1414;color:#ff7b72;">YML</span>
+                        {% elif ext == 'xml' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">XML</span>
+                        {% elif ext == 'sh' or ext == 'bash' %}<span class="file-badge" style="background:#0d2b17;color:#7ee787;">SH</span>
+                        {% elif ext == 'c' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">C</span>
+                        {% elif ext == 'cpp' or ext == 'cc' or ext == 'h' or ext == 'hpp' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">C++</span>
+                        {% elif ext == 'java' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">JAVA</span>
+                        {% elif ext == 'go' %}<span class="file-badge" style="background:#0d3244;color:#56d4dd;">GO</span>
+                        {% elif ext == 'rs' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">RS</span>
+                        {% elif ext == 'php' %}<span class="file-badge" style="background:#241a3d;color:#d2a8ff;">PHP</span>
+                        {% elif ext == 'rb' %}<span class="file-badge" style="background:#3d1414;color:#ff7b72;">RB</span>
+                        {% elif ext == 'sql' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">SQL</span>
+                        {% elif ext == 'csv' %}<span class="file-badge" style="background:#0d2b17;color:#7ee787;">CSV</span>
+                        {% elif ext == 'txt' %}<span class="file-badge" style="background:#2b2b2b;color:#8b949e;">TXT</span>
+                        {% elif ext == 'pdf' %}<span class="file-badge" style="background:#3d1414;color:#ff7b72;">PDF</span>
+                        {% elif ext == 'doc' or ext == 'docx' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">DOC</span>
+                        {% elif ext == 'xls' or ext == 'xlsx' %}<span class="file-badge" style="background:#0d2b17;color:#7ee787;">XLS</span>
+                        {% elif ext == 'ppt' or ext == 'pptx' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">PPT</span>
+                        {% elif ext == 'zip' or ext == 'tar' or ext == 'gz' or ext == 'rar' or ext == '7z' %}<span class="file-badge" style="background:#241a3d;color:#d2a8ff;">ZIP</span>
+                        {% elif ext == 'png' or ext == 'jpg' or ext == 'jpeg' or ext == 'gif' or ext == 'webp' or ext == 'svg' or ext == 'ico' or ext == 'bmp' %}<span class="file-badge" style="background:#0d2b17;color:#7ee787;">IMG</span>
+                        {% elif ext == 'mp4' or ext == 'mov' or ext == 'webm' or ext == 'mkv' or ext == 'avi' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">VID</span>
+                        {% elif ext == 'mp3' or ext == 'wav' or ext == 'flac' or ext == 'ogg' or ext == 'm4a' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">AUD</span>
+                        {% else %}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                        {% endif %}
                         <a href="{{ raw_base_url }}/{{ item.path }}" data-turbo="false">{{ item.name }}</a>
                         {% endif %}
                     </div>
