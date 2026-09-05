@@ -194,6 +194,72 @@
             flex-shrink: 0;
             line-height: 1;
         }
+
+        .file-icon {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+            -webkit-mask-size: contain;
+            mask-size: contain;
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-position: center;
+        }
+        
+        [data-ext="js"] .file-icon, [data-ext="mjs"] .file-icon, [data-ext="cjs"] .file-icon, [data-ext="jsx"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/javascript.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/javascript.svg");
+            background-color: #f7df1e;
+        }
+        [data-ext="ts"] .file-icon, [data-ext="tsx"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/typescript.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/typescript.svg");
+            background-color: #3178c6;
+        }
+        [data-ext="py"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/python.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/python.svg");
+            background-color: #3776ab;
+        }
+        [data-ext="html"] .file-icon, [data-ext="htm"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/html5.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/html5.svg");
+            background-color: #e34c26;
+        }
+        [data-ext="css"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/css3.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/css3.svg");
+            background-color: #264de4;
+        }
+        [data-ext="scss"] .file-icon, [data-ext="sass"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/sass.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/sass.svg");
+            background-color: #cc6699;
+        }
+        [data-ext="php"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/php.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/php.svg");
+            background-color: #777bb4;
+        }
+        [data-ext="rb"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/ruby.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/ruby.svg");
+            background-color: #cc342d;
+        }
+        [data-ext="rs"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/rust.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/rust.svg");
+            background-color: #dea584;
+        }
+        [data-ext="go"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/go.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/go.svg");
+            background-color: #00add8;
+        }
+        [data-ext="md"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/markdown.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/markdown.svg");
+            background-color: #c9d1d9;
+        }
+        [data-ext="sh"] .file-icon, [data-ext="bash"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/gnubash.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/gnubash.svg");
+            background-color: #4eaa25;
+        }
+        [data-ext="cpp"] .file-icon, [data-ext="cc"] .file-icon, [data-ext="h"] .file-icon, [data-ext="hpp"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/cplusplus.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/cplusplus.svg");
+            background-color: #659ad2;
+        }
         
         .item-meta {
             display: flex;
@@ -544,32 +610,18 @@
                 {% if item.name != '.gitattributes' %}
                 <div class="list-item" data-name="{{ item.name }}">
                     {% set ext = item.name.rsplit('.', 1)[-1] | lower if '.' in item.name else '' %}
-                    <div class="item-name">
+                    {% set logo_exts = ['js','mjs','cjs','jsx','ts','tsx','py','html','htm','css','scss','sass','php','rb','rs','go','md','sh','bash','cpp','cc','h','hpp'] %}
+                    <div class="item-name" {% if not item.is_dir and ext in logo_exts %}data-ext="{{ ext }}"{% endif %}>
                         {% if item.is_dir %}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                         <a href="/{{ item.path }}">{{ item.name }}/</a>
                         {% else %}
-                        {% if ext == 'md' %}<span class="file-badge" style="background:#083344;color:#5eead4;">MD</span>
-                        {% elif ext == 'js' %}<span class="file-badge" style="background:#3a3000;color:#f2cc60;">JS</span>
-                        {% elif ext == 'mjs' or ext == 'cjs' %}<span class="file-badge" style="background:#3a3000;color:#f2cc60;">JS</span>
-                        {% elif ext == 'ts' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">TS</span>
-                        {% elif ext == 'tsx' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">TSX</span>
-                        {% elif ext == 'jsx' %}<span class="file-badge" style="background:#3a3000;color:#f2cc60;">JSX</span>
-                        {% elif ext == 'py' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">PY</span>
-                        {% elif ext == 'html' or ext == 'htm' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">HTML</span>
-                        {% elif ext == 'css' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">CSS</span>
-                        {% elif ext == 'scss' or ext == 'sass' %}<span class="file-badge" style="background:#3d1730;color:#ff7edb;">SCSS</span>
+                        {% if ext in logo_exts %}<span class="file-icon"></span>
                         {% elif ext == 'json' %}<span class="file-badge" style="background:#2b2b2b;color:#c9d1d9;">{ }</span>
                         {% elif ext == 'yml' or ext == 'yaml' %}<span class="file-badge" style="background:#3d1414;color:#ff7b72;">YML</span>
                         {% elif ext == 'xml' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">XML</span>
-                        {% elif ext == 'sh' or ext == 'bash' %}<span class="file-badge" style="background:#0d2b17;color:#7ee787;">SH</span>
-                        {% elif ext == 'c' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">C</span>
-                        {% elif ext == 'cpp' or ext == 'cc' or ext == 'h' or ext == 'hpp' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">C++</span>
                         {% elif ext == 'java' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">JAVA</span>
-                        {% elif ext == 'go' %}<span class="file-badge" style="background:#0d3244;color:#56d4dd;">GO</span>
-                        {% elif ext == 'rs' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">RS</span>
-                        {% elif ext == 'php' %}<span class="file-badge" style="background:#241a3d;color:#d2a8ff;">PHP</span>
-                        {% elif ext == 'rb' %}<span class="file-badge" style="background:#3d1414;color:#ff7b72;">RB</span>
+                        {% elif ext == 'c' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">C</span>
                         {% elif ext == 'sql' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">SQL</span>
                         {% elif ext == 'csv' %}<span class="file-badge" style="background:#0d2b17;color:#7ee787;">CSV</span>
                         {% elif ext == 'txt' %}<span class="file-badge" style="background:#2b2b2b;color:#8b949e;">TXT</span>
