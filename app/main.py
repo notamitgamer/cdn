@@ -1,11 +1,13 @@
 import os
 import shutil
+import time
 import uuid
 import mimetypes
 import io
 import zipfile
 import asyncio
 import httpx
+from collections import deque
 from pathlib import Path
 from fastapi import FastAPI, Request, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
@@ -75,23 +77,28 @@ async def _proxy_stream(client: httpx.AsyncClient, r: httpx.Response):
     finally:
         await client.aclose()
 
-async def stream_raw(path: str):
+async def stream_raw(path: str, request: Request):
     hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
     client = httpx.AsyncClient(follow_redirects=True)
-    req = client.build_request("GET", hf_url)
+    req_headers = {}
+    range_header = request.headers.get("range")
+    if range_header:
+        req_headers["Range"] = range_header
+    req = client.build_request("GET", hf_url, headers=req_headers)
     r = await client.send(req, stream=True)
-    
-    if r.status_code != 200:
+
+    if r.status_code not in (200, 206):
         await client.aclose()
         raise HTTPException(status_code=404, detail="File not found")
-    
+
     headers = {
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=31536000",
-        "X-Content-Type-Options": "nosniff"
+        "X-Content-Type-Options": "nosniff",
+        "Accept-Ranges": "bytes",
     }
-    
-    for h in ["Content-Type", "Content-Encoding", "Content-Length", "Etag", "Accept-Ranges"]:
+
+    for h in ["Content-Type", "Content-Encoding", "Content-Length", "Etag", "Content-Range"]:
         if h in r.headers:
             headers[h] = r.headers[h]
 
@@ -101,39 +108,91 @@ async def stream_raw(path: str):
         if headers.get("Content-Type", "application/octet-stream") == "application/octet-stream":
             headers["Content-Type"] = "text/plain; charset=utf-8"
 
-    return StreamingResponse(_proxy_stream(client, r), headers=headers)
+    return StreamingResponse(_proxy_stream(client, r), status_code=r.status_code, headers=headers)
 
 @app.get("/api/download/{path:path}")
-async def download_file(path: str):
+async def download_file(path: str, request: Request):
     hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
     client = httpx.AsyncClient(follow_redirects=True)
-    req = client.build_request("GET", hf_url)
+    req_headers = {}
+    range_header = request.headers.get("range")
+    if range_header:
+        req_headers["Range"] = range_header
+    req = client.build_request("GET", hf_url, headers=req_headers)
     r = await client.send(req, stream=True)
-    
-    if r.status_code != 200:
+
+    if r.status_code not in (200, 206):
         await client.aclose()
         raise HTTPException(status_code=404, detail="Not found")
-    
+
     filename = path.split("/")[-1]
     headers = {
         "Content-Disposition": f'attachment; filename="{filename}"',
-        "Content-Type": r.headers.get("Content-Type", "application/octet-stream")
+        "Content-Type": r.headers.get("Content-Type", "application/octet-stream"),
+        "Accept-Ranges": "bytes",
     }
-    
-    # Forward length and encoding to allow browser progress bars and raw file integrity
-    for h in ["Content-Length", "Content-Encoding", "Etag"]:
+
+    # Forward length/range/encoding so browsers can resume interrupted downloads
+    for h in ["Content-Length", "Content-Encoding", "Etag", "Content-Range"]:
         if h in r.headers:
             headers[h] = r.headers[h]
 
-    return StreamingResponse(_proxy_stream(client, r), headers=headers)
+    return StreamingResponse(_proxy_stream(client, r), status_code=r.status_code, headers=headers)
+
+# Per-IP upload rate limiting: since /api/upload has no auth (shared with a
+# friend), cap bandwidth instead of blocking access entirely.
+UPLOAD_LIMIT_PER_MINUTE = 50 * 1024 * 1024   # 50 MB/min
+UPLOAD_LIMIT_PER_HOUR = 300 * 1024 * 1024    # 300 MB/hour
+
+class _UploadRateLimiter:
+    def __init__(self):
+        self._usage: dict[str, deque] = {}  # ip -> deque[(timestamp, size)]
+
+    def _prune(self, ip: str, now: float):
+        dq = self._usage.get(ip)
+        if not dq:
+            return
+        while dq and now - dq[0][0] > 3600:
+            dq.popleft()
+
+    def check_and_record(self, ip: str, size: int):
+        now = time.time()
+        dq = self._usage.setdefault(ip, deque())
+        self._prune(ip, now)
+
+        minute_used = sum(s for t, s in dq if now - t <= 60)
+        hour_used = sum(s for t, s in dq)
+
+        if minute_used + size > UPLOAD_LIMIT_PER_MINUTE:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Upload rate limit exceeded: {format_size(UPLOAD_LIMIT_PER_MINUTE)}/minute. Try again shortly.",
+            )
+        if hour_used + size > UPLOAD_LIMIT_PER_HOUR:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Upload rate limit exceeded: {format_size(UPLOAD_LIMIT_PER_HOUR)}/hour. Try again later.",
+            )
+
+        dq.append((now, size))
+
+_upload_limiter = _UploadRateLimiter()
 
 @app.post("/api/upload")
-async def handle_upload(files: list[UploadFile] = File(...)):
+async def handle_upload(request: Request, files: list[UploadFile] = File(...)):
+    client_ip = request.client.host if request.client else "unknown"
     results = []
     for file in files:
         temp_path = f"/tmp/{uuid.uuid4()}-{file.filename}"
         with open(temp_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
+
+        size = os.path.getsize(temp_path)
+        try:
+            _upload_limiter.check_and_record(client_ip, size)
+        except HTTPException:
+            os.remove(temp_path)
+            raise
 
         try:
             hf_path = upload_temp_file(temp_path, file.filename)
@@ -219,7 +278,7 @@ async def serve(request: Request, path: str):
     if request.url.hostname == RAW_DOMAIN:
         if not clean_path:
             return HTMLResponse("Specify a file path.", status_code=200)
-        return await stream_raw(clean_path)
+        return await stream_raw(clean_path, request)
 
     if clean_path == RAW_PREFIX.rstrip("/") or clean_path.startswith(RAW_PREFIX):
         raw_path = clean_path[len(RAW_PREFIX):]
