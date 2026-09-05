@@ -506,6 +506,12 @@
             If you do not remember the link, go to the <a href="/uploads">uploads folder</a> to find your file.
         </blockquote>
 
+        <div style="display:flex; gap:0.5rem; margin-bottom: 1rem;">
+            <input type="text" id="url-input" placeholder="paste a link to fetch and upload…"
+                   style="flex:1; padding:0.6rem 0.75rem; border:1px solid var(--border, #333); border-radius:4px; background:var(--bg-input, transparent); color:inherit;">
+            <button type="button" class="btn" id="url-upload-btn">Upload from URL</button>
+        </div>
+
         <div id="dropzone">
             <div>drag &amp; drop files here</div>
             <div style="font-size: 0.8rem; margin-top: 0.5rem;">or click to select</div>
@@ -518,6 +524,8 @@
         <script>
             const dropzone = document.getElementById('dropzone');
             const fileInput = document.getElementById('file-input');
+            const urlInput = document.getElementById('url-input');
+            const urlUploadBtn = document.getElementById('url-upload-btn');
             const results = document.getElementById('results');
             const errorBox = document.getElementById('error-box');
 
@@ -628,6 +636,55 @@
                 xhr.onerror = () => { showError('connection error.'); };
                 xhr.send(formData);
             }
+
+            urlUploadBtn.addEventListener('click', () => {
+                const url = urlInput.value.trim();
+                errorBox.style.display = 'none';
+                if (!url) return;
+
+                let label;
+                try {
+                    label = decodeURIComponent(new URL(url).pathname.split('/').pop()) || url;
+                } catch (e) {
+                    showError('That doesn\'t look like a valid URL.');
+                    return;
+                }
+
+                const row = document.createElement('div');
+                row.className = 'file-row';
+                row.innerHTML = `<div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:1rem;">${label}</div><div class="status" style="color:var(--text-dim); white-space:nowrap;"><span class="upload-spinner spin-anim"></span><span style="color: var(--accent-pink);">fetching & saving to HF...</span></div>`;
+                results.prepend(row);
+
+                urlUploadBtn.disabled = true;
+
+                fetch('/api/upload-url', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                })
+                    .then(async (resp) => {
+                        const data = await resp.json().catch(() => ({}));
+                        if (!resp.ok) {
+                            throw new Error(data.detail || 'upload from URL failed.');
+                        }
+                        const item = data.files[0];
+                        row.classList.add('done');
+                        row.innerHTML = `
+                            <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:1rem; color: #2ea043;">${item.filename}</div>
+                            <div style="white-space:nowrap; display:flex; gap:0.75rem;">
+                                <a href="${item.raw_url}" target="_blank">raw</a>
+                            </div>
+                        `;
+                        urlInput.value = '';
+                    })
+                    .catch((err) => {
+                        row.classList.add('error');
+                        row.querySelector('.status').textContent = 'failed';
+                        row.querySelector('.status').style.color = 'var(--danger)';
+                        showError(err.message);
+                    })
+                    .finally(() => { urlUploadBtn.disabled = false; });
+            });
         </script>
         {% endif %}
 

@@ -1,6 +1,7 @@
 import os
 import time
 import uuid
+import asyncio
 import httpx
 from huggingface_hub import HfApi
 
@@ -9,32 +10,43 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 
 api = HfApi(token=HF_TOKEN)
 
-# LRU Cache implementation
+# Simple in-memory LRU cache keyed on insertion order (dict preserves order).
+# _get_cache/_set_cache are synchronous (no `await` inside), so they can't be
+# interrupted mid-execution by another coroutine and need no lock. The one
+# spot that does need locking is is_file, which awaits a network call between
+# checking and populating the cache — see _get_key_lock below.
 _cache = {}
 CACHE_TTL = 60
 MAX_CACHE_SIZE = 500
+
+_key_locks: dict[str, asyncio.Lock] = {}
+
+def _get_key_lock(key: str) -> asyncio.Lock:
+    lock = _key_locks.get(key)
+    if lock is None:
+        lock = asyncio.Lock()
+        _key_locks[key] = lock
+        # Keep the lock registry from growing unbounded over time.
+        if len(_key_locks) > MAX_CACHE_SIZE:
+            _key_locks.pop(next(iter(_key_locks)))
+    return lock
 
 def _get_cache(key):
     if key in _cache:
         expiry, value = _cache[key]
         if expiry > time.time():
-            # Move to the end of the dictionary to mark it as most recently used (LRU)
-            _cache[key] = _cache.pop(key)
+            _cache[key] = _cache.pop(key)  # move to end = most recently used
             return value
-        else:
-            # Expired
-            del _cache[key]
+        del _cache[key]
     return None
 
 def _set_cache(key, value):
     if key in _cache:
-        # Remove it first so we can re-insert it at the end
         del _cache[key]
     elif len(_cache) >= MAX_CACHE_SIZE:
-        # Dictionary is full. Remove the oldest item (which is at the front)
         oldest_key = next(iter(_cache))
         del _cache[oldest_key]
-        
+
     _cache[key] = (time.time() + CACHE_TTL, value)
 
 async def is_file(path: str) -> bool:
@@ -46,12 +58,20 @@ async def is_file(path: str) -> bool:
     if cached is not None:
         return cached
 
-    hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
-    async with httpx.AsyncClient() as client:
-        r = await client.head(hf_url)
-        result = r.status_code == 200
-        _set_cache(cache_key, result)
-        return result
+    # Per-key lock: if two requests for the same uncached path race in,
+    # only the first actually hits HF; the second waits and then reads
+    # the now-populated cache instead of firing a duplicate request.
+    async with _get_key_lock(cache_key):
+        cached = _get_cache(cache_key)
+        if cached is not None:
+            return cached
+
+        hf_url = f"https://huggingface.co/datasets/{HF_REPO_ID}/resolve/main/{path}"
+        async with httpx.AsyncClient() as client:
+            r = await client.head(hf_url)
+            result = r.status_code == 200
+            _set_cache(cache_key, result)
+            return result
 
 def _fetch_tree(path: str):
     return list(api.list_repo_tree(
@@ -136,11 +156,9 @@ def repo_stats():
     if cache_key in _cache:
         expiry, value = _cache[cache_key]
         if expiry > now:
-            # Move to end as part of LRU update
             _cache[cache_key] = _cache.pop(cache_key)
             return value
-        else:
-            del _cache[cache_key]
+        del _cache[cache_key]
 
     try:
         items = list(api.list_repo_tree(
