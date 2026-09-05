@@ -6,9 +6,13 @@ import mimetypes
 import io
 import zipfile
 import asyncio
+import socket
+import ipaddress
+from urllib.parse import urlparse, unquote
 import httpx
 from collections import deque
 from pathlib import Path
+from pydantic import BaseModel
 from fastapi import FastAPI, Request, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
@@ -207,6 +211,108 @@ async def handle_upload(request: Request, files: list[UploadFile] = File(...)):
         })
 
     return {"files": results}
+
+# --- Upload-from-URL ------------------------------------------------------
+# Since this endpoint makes the server fetch an arbitrary URL the caller
+# supplies, it's a classic SSRF vector (e.g. someone pasting a link to the
+# server's own localhost, its cloud metadata endpoint, or another host on
+# the private network). We only allow http(s), and resolve + reject any
+# hostname whose IP is private/loopback/link-local/reserved before fetching.
+
+_MAX_URL_UPLOAD_BYTES = UPLOAD_LIMIT_PER_HOUR  # a single fetch can't exceed the hourly cap anyway
+
+def _assert_public_url(url: str):
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Only http:// and https:// URLs are supported.")
+    if not parsed.hostname:
+        raise HTTPException(status_code=400, detail="Invalid URL.")
+
+    try:
+        addrinfos = socket.getaddrinfo(parsed.hostname, None)
+    except socket.gaierror:
+        raise HTTPException(status_code=400, detail="Could not resolve host.")
+
+    for family, _, _, _, sockaddr in addrinfos:
+        ip = ipaddress.ip_address(sockaddr[0])
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            raise HTTPException(status_code=400, detail="URLs pointing to private/internal addresses are not allowed.")
+
+class UploadUrlRequest(BaseModel):
+    url: str
+
+@app.post("/api/upload-url")
+async def handle_upload_from_url(request: Request, body: UploadUrlRequest):
+    client_ip = request.client.host if request.client else "unknown"
+    url = body.url.strip()
+    _assert_public_url(url)
+
+    parsed = urlparse(url)
+    filename = os.path.basename(unquote(parsed.path)) or f"download-{uuid.uuid4().hex[:8]}"
+
+    temp_path = f"/tmp/{uuid.uuid4()}-{filename}"
+    downloaded = 0
+
+    async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+        try:
+            async with client.stream("GET", url) as r:
+                if r.status_code != 200:
+                    raise HTTPException(status_code=400, detail=f"Source returned status {r.status_code}.")
+
+                content_length = r.headers.get("Content-Length")
+                if content_length and int(content_length) > _MAX_URL_UPLOAD_BYTES:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File too large (limit {format_size(_MAX_URL_UPLOAD_BYTES)} per fetch).",
+                    )
+
+                cd = r.headers.get("Content-Disposition", "")
+                if "filename=" in cd:
+                    filename = cd.split("filename=")[-1].strip('"; ') or filename
+                    temp_path = f"/tmp/{uuid.uuid4()}-{filename}"
+
+                with open(temp_path, "wb") as f:
+                    async for chunk in r.aiter_bytes():
+                        downloaded += len(chunk)
+                        if downloaded > _MAX_URL_UPLOAD_BYTES:
+                            raise HTTPException(
+                                status_code=413,
+                                detail=f"File too large (limit {format_size(_MAX_URL_UPLOAD_BYTES)} per fetch).",
+                            )
+                        f.write(chunk)
+        except httpx.RequestError:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            raise HTTPException(status_code=400, detail="Could not fetch the URL.")
+        except HTTPException:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            raise
+
+    try:
+        _upload_limiter.check_and_record(client_ip, downloaded)
+    except HTTPException:
+        os.remove(temp_path)
+        raise
+
+    try:
+        hf_path = upload_temp_file(temp_path, filename)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+    return {"files": [{
+        "filename": filename,
+        "cdn_url": f"{CDN_BASE_URL}/{hf_path}",
+        "raw_url": f"{RAW_BASE_URL}/{hf_path}"
+    }]}
 
 @app.get("/api/zip-stats/{path:path}")
 async def zip_stats(path: str):
