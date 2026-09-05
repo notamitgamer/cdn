@@ -106,7 +106,6 @@ async def stream_raw(path: str, request: Request):
         if h in r.headers:
             headers[h] = r.headers[h]
 
-    # Force text/plain for .md/.txt if HF served them as octet-stream
     filename = path.split("/")[-1].lower()
     if filename.endswith(".md") or filename.endswith(".txt"):
         if headers.get("Content-Type", "application/octet-stream") == "application/octet-stream":
@@ -136,21 +135,18 @@ async def download_file(path: str, request: Request):
         "Accept-Ranges": "bytes",
     }
 
-    # Forward length/range/encoding so browsers can resume interrupted downloads
     for h in ["Content-Length", "Content-Encoding", "Etag", "Content-Range"]:
         if h in r.headers:
             headers[h] = r.headers[h]
 
     return StreamingResponse(_proxy_stream(client, r), status_code=r.status_code, headers=headers)
 
-# Per-IP upload rate limiting: since /api/upload has no auth (shared with a
-# friend), cap bandwidth instead of blocking access entirely.
-UPLOAD_LIMIT_PER_MINUTE = 50 * 1024 * 1024   # 50 MB/min
-UPLOAD_LIMIT_PER_HOUR = 300 * 1024 * 1024    # 300 MB/hour
+UPLOAD_LIMIT_PER_MINUTE = 50 * 1024 * 1024
+UPLOAD_LIMIT_PER_HOUR = 300 * 1024 * 1024
 
 class _UploadRateLimiter:
     def __init__(self):
-        self._usage: dict[str, deque] = {}  # ip -> deque[(timestamp, size)]
+        self._usage: dict[str, deque] = {}
 
     def _prune(self, ip: str, now: float):
         dq = self._usage.get(ip)
@@ -212,19 +208,12 @@ async def handle_upload(request: Request, files: list[UploadFile] = File(...)):
 
     return {"files": results}
 
-# --- Upload-from-URL ------------------------------------------------------
-# Since this endpoint makes the server fetch an arbitrary URL the caller
-# supplies, it's a classic SSRF vector (e.g. someone pasting a link to the
-# server's own localhost, its cloud metadata endpoint, or another host on
-# the private network). We only allow http(s), and resolve + reject any
-# hostname whose IP is private/loopback/link-local/reserved before fetching.
-
-_MAX_URL_UPLOAD_BYTES = UPLOAD_LIMIT_PER_HOUR  # a single fetch can't exceed the hourly cap anyway
+_MAX_URL_UPLOAD_BYTES = UPLOAD_LIMIT_PER_HOUR
 
 def _assert_public_url(url: str):
     parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
-        raise HTTPException(status_code=400, detail="Only http:// and https:// URLs are supported.")
+    if parsed.scheme != "https":
+        raise HTTPException(status_code=400, detail="Only https:// URLs are supported.")
     if not parsed.hostname:
         raise HTTPException(status_code=400, detail="Invalid URL.")
 
