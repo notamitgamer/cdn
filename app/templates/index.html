@@ -141,6 +141,7 @@
             align-items: center;
             justify-content: space-between;
             padding: 0.75rem 1.5rem;
+            min-height: 44px;
             border-bottom: 1px solid var(--border);
             border-left: 2px solid transparent;
             color: var(--text-main);
@@ -148,6 +149,10 @@
             transition: background 0.12s ease, border-color 0.12s ease;
         }
         .list-item:hover {
+            background: var(--surface);
+            border-left-color: var(--accent-pink);
+        }
+        .list-item:active {
             background: var(--surface);
             border-left-color: var(--accent-pink);
         }
@@ -196,10 +201,19 @@
             transition: color 0.15s;
             display: flex;
             align-items: center;
-            padding: 0.25rem;
+            justify-content: center;
+            padding: 0.5rem;
+            min-width: 44px;
+            min-height: 44px;
+            margin: -0.5rem;
         }
         .download-icon:hover {
             color: var(--accent-pink);
+        }
+        .download-icon:active {
+            color: var(--accent-pink);
+            background: rgba(255, 180, 171, 0.1);
+            border-radius: 4px;
         }
 
         .btn {
@@ -217,6 +231,7 @@
             transition: opacity 0.15s ease;
         }
         .btn:hover:not(:disabled) { background: #21262d; text-decoration: none; border-color: #30363d; }
+        .btn:active:not(:disabled) { background: #21262d; border-color: #30363d; }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .url-input {
@@ -317,10 +332,14 @@
             cursor: pointer;
             display: inline-flex;
             align-items: center;
-            padding: 0.15rem;
+            justify-content: center;
+            padding: 0.5rem;
+            min-width: 32px;
+            min-height: 32px;
             transition: color 0.15s;
         }
         .copy-path-btn:hover { color: var(--accent-pink); }
+        .copy-path-btn:active { color: var(--accent-pink); }
 
         .listing-toolbar {
             display: flex;
