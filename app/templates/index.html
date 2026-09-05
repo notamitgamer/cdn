@@ -180,21 +180,6 @@
             font-weight: 500;
         }
 
-        .file-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 28px;
-            height: 16px;
-            padding: 0 4px;
-            border-radius: 3px;
-            font-size: 0.6rem;
-            font-weight: 700;
-            letter-spacing: 0.2px;
-            flex-shrink: 0;
-            line-height: 1;
-        }
-
         .file-icon {
             display: inline-block;
             width: 15px;
@@ -256,9 +241,49 @@
             -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/gnubash.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/gnubash.svg");
             background-color: #4eaa25;
         }
-        [data-ext="cpp"] .file-icon, [data-ext="cc"] .file-icon, [data-ext="h"] .file-icon, [data-ext="hpp"] .file-icon {
+        [data-ext="cpp"] .file-icon, [data-ext="cc"] .file-icon {
             -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/cplusplus.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/cplusplus.svg");
             background-color: #659ad2;
+        }
+        [data-ext="c"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/c.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/c.svg");
+            background-color: #a8b9cc;
+        }
+        [data-ext="r"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/r.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/r.svg");
+            background-color: #276dc3;
+        }
+        [data-ext="cs"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/csharp.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/csharp.svg");
+            background-color: #512bd4;
+        }
+        [data-ext="kt"] .file-icon, [data-ext="kts"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/kotlin.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/kotlin.svg");
+            background-color: #7f52ff;
+        }
+        [data-ext="swift"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/swift.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/swift.svg");
+            background-color: #f05138;
+        }
+        [data-ext="dart"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/dart.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/dart.svg");
+            background-color: #0175c2;
+        }
+        [data-ext="lua"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/lua.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/lua.svg");
+            background-color: #6ea0d8;
+        }
+        [data-ext="doc"] .file-icon, [data-ext="docx"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/microsoftword.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/microsoftword.svg");
+            background-color: #2b579a;
+        }
+        [data-ext="xls"] .file-icon, [data-ext="xlsx"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/microsoftexcel.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/microsoftexcel.svg");
+            background-color: #217346;
+        }
+        [data-ext="ppt"] .file-icon, [data-ext="pptx"] .file-icon {
+            -webkit-mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/microsoftpowerpoint.svg"); mask-image: url("https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/microsoftpowerpoint.svg");
+            background-color: #b7472a;
         }
         
         .item-meta {
@@ -610,31 +635,15 @@
                 {% if item.name != '.gitattributes' %}
                 <div class="list-item" data-name="{{ item.name }}">
                     {% set ext = item.name.rsplit('.', 1)[-1] | lower if '.' in item.name else '' %}
-                    {% set logo_exts = ['js','mjs','cjs','jsx','ts','tsx','py','html','htm','css','scss','sass','php','rb','rs','go','md','sh','bash','cpp','cc','h','hpp'] %}
+                    {% set logo_exts = ['js','mjs','cjs','jsx','ts','tsx','py','html','htm','css','scss','sass','php','rb','rs','go','md','sh','bash','cpp','cc','c','r','cs','kt','kts','swift','dart','lua','doc','docx','xls','xlsx','ppt','pptx'] %}
                     <div class="item-name" {% if not item.is_dir and ext in logo_exts %}data-ext="{{ ext }}"{% endif %}>
                         {% if item.is_dir %}
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                         <a href="/{{ item.path }}">{{ item.name }}/</a>
                         {% else %}
                         {% if ext in logo_exts %}<span class="file-icon"></span>
-                        {% elif ext == 'json' %}<span class="file-badge" style="background:#2b2b2b;color:#c9d1d9;">{ }</span>
-                        {% elif ext == 'yml' or ext == 'yaml' %}<span class="file-badge" style="background:#3d1414;color:#ff7b72;">YML</span>
-                        {% elif ext == 'xml' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">XML</span>
-                        {% elif ext == 'java' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">JAVA</span>
-                        {% elif ext == 'c' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">C</span>
-                        {% elif ext == 'sql' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">SQL</span>
-                        {% elif ext == 'csv' %}<span class="file-badge" style="background:#0d2b17;color:#7ee787;">CSV</span>
-                        {% elif ext == 'txt' %}<span class="file-badge" style="background:#2b2b2b;color:#8b949e;">TXT</span>
-                        {% elif ext == 'pdf' %}<span class="file-badge" style="background:#3d1414;color:#ff7b72;">PDF</span>
-                        {% elif ext == 'doc' or ext == 'docx' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">DOC</span>
-                        {% elif ext == 'xls' or ext == 'xlsx' %}<span class="file-badge" style="background:#0d2b17;color:#7ee787;">XLS</span>
-                        {% elif ext == 'ppt' or ext == 'pptx' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">PPT</span>
-                        {% elif ext == 'zip' or ext == 'tar' or ext == 'gz' or ext == 'rar' or ext == '7z' %}<span class="file-badge" style="background:#241a3d;color:#d2a8ff;">ZIP</span>
-                        {% elif ext == 'png' or ext == 'jpg' or ext == 'jpeg' or ext == 'gif' or ext == 'webp' or ext == 'svg' or ext == 'ico' or ext == 'bmp' %}<span class="file-badge" style="background:#0d2b17;color:#7ee787;">IMG</span>
-                        {% elif ext == 'mp4' or ext == 'mov' or ext == 'webm' or ext == 'mkv' or ext == 'avi' %}<span class="file-badge" style="background:#0d2847;color:#79c0ff;">VID</span>
-                        {% elif ext == 'mp3' or ext == 'wav' or ext == 'flac' or ext == 'ogg' or ext == 'm4a' %}<span class="file-badge" style="background:#3d1f0d;color:#ffa657;">AUD</span>
                         {% else %}
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/></svg>
                         {% endif %}
                         <a href="{{ raw_base_url }}/{{ item.path }}" data-turbo="false">{{ item.name }}</a>
                         {% endif %}
